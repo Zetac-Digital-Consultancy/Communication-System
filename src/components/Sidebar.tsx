@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { MessageSquare, Bell, LogOut, UserPlus, Users } from "lucide-react";
+import { MessageSquare, Bell, LogOut, UserPlus, Users, Shield } from "lucide-react";
 import { de } from "@/lib/de";
 import { cn, formatRelativeTime, getInitials } from "@/lib/utils";
 import type { Contact, Notification, AvailableUser } from "@/types";
@@ -23,6 +23,9 @@ interface SidebarProps {
   onSelectedUserChange: (userId: string) => void;
   onAddContact: () => void;
   onLogout: () => void;
+  isAdmin?: boolean;
+  showAdminPanel?: boolean;
+  onOpenAdminPanel?: () => void;
 }
 
 export default function Sidebar({
@@ -42,6 +45,9 @@ export default function Sidebar({
   onSelectedUserChange,
   onAddContact,
   onLogout,
+  isAdmin = false,
+  showAdminPanel = false,
+  onOpenAdminPanel,
 }: SidebarProps) {
   return (
     <aside className="w-80 bg-white border-r border-slate-200 flex flex-col h-full shrink-0">
@@ -233,6 +239,38 @@ export default function Sidebar({
               </li>
             ))}
           </ul>
+        )}
+
+        {isAdmin && (
+          <>
+            <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <Shield className="w-4 h-4 text-slate-500" />
+                <span className="text-sm font-medium text-slate-900">
+                  {de.sidebar.userManagement}
+                </span>
+              </div>
+            </div>
+            <button
+              onClick={onOpenAdminPanel}
+              className={cn(
+                "w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition text-left border-b border-slate-50",
+                showAdminPanel && "bg-brand-50 hover:bg-brand-50"
+              )}
+            >
+              <div className="w-10 h-10 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center shrink-0">
+                <Shield className="w-5 h-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <span className="font-medium text-sm text-slate-900">
+                  {de.admin.title}
+                </span>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  {de.admin.subtitle}
+                </p>
+              </div>
+            </button>
+          </>
         )}
       </div>
     </aside>

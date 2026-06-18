@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
       where: { email: email.toLowerCase().trim() },
     });
 
-    if (!user) {
+    if (!user || !user.isActive) {
       return NextResponse.json(
         { error: "Ungültige Anmeldedaten" },
         { status: 401 }
@@ -37,11 +37,17 @@ export async function POST(request: NextRequest) {
     session.userId = user.id;
     session.email = user.email;
     session.name = user.name;
+    session.role = user.role;
     session.isLoggedIn = true;
     await session.save();
 
     return NextResponse.json({
-      user: { id: user.id, email: user.email, name: user.name },
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+      },
     });
   } catch {
     return NextResponse.json(

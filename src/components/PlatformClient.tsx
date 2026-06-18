@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import ChatArea from "@/components/ChatArea";
+import AdminPanel from "@/components/AdminPanel";
 import type {
   AvailableUser,
   Contact,
@@ -23,6 +24,8 @@ export default function PlatformClient() {
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [activeConversation, setActiveConversation] = useState<ConversationDetail | null>(null);
   const [currentUserName, setCurrentUserName] = useState("");
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [showAddContact, setShowAddContact] = useState(false);
   const [addingContact, setAddingContact] = useState(false);
   const [addContactError, setAddContactError] = useState("");
@@ -68,6 +71,7 @@ export default function PlatformClient() {
     if (res.ok) {
       const data = await res.json();
       setCurrentUserName(data.user.name);
+      setIsAdmin(data.user.isAdmin === true);
     }
   }, []);
 
@@ -118,11 +122,19 @@ export default function PlatformClient() {
   }
 
   function handleSelectNotification(conversationId: string) {
+    setShowAdminPanel(false);
     setActiveConversationId(conversationId);
   }
 
   function handleSelectContact(contactUserId: string) {
+    setShowAdminPanel(false);
     openChatWithContact(contactUserId);
+  }
+
+  function handleOpenAdminPanel() {
+    setShowAdminPanel(true);
+    setActiveConversationId(null);
+    setActiveConversation(null);
   }
 
   function handleToggleAddContact() {
@@ -216,11 +228,18 @@ export default function PlatformClient() {
         onSelectedUserChange={setSelectedUserId}
         onAddContact={handleAddContact}
         onLogout={handleLogout}
+        isAdmin={isAdmin}
+        showAdminPanel={showAdminPanel}
+        onOpenAdminPanel={handleOpenAdminPanel}
       />
-      <ChatArea
-        conversation={activeConversation}
-        onSendMessage={handleSendMessage}
-      />
+      {showAdminPanel && isAdmin ? (
+        <AdminPanel />
+      ) : (
+        <ChatArea
+          conversation={activeConversation}
+          onSendMessage={handleSendMessage}
+        />
+      )}
     </div>
   );
 }

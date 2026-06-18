@@ -14,6 +14,8 @@ async function main() {
       name: "Max Mustermann",
       password,
       avatar: null,
+      role: "USER",
+      isActive: true,
     },
   });
 
@@ -25,6 +27,21 @@ async function main() {
       name: "Anna Schmidt",
       password,
       avatar: null,
+      role: "USER",
+      isActive: true,
+    },
+  });
+
+  const _admin = await prisma.user.upsert({
+    where: { email: "admin@beispiel.de" },
+    update: { role: "ADMIN", isActive: true },
+    create: {
+      email: "admin@beispiel.de",
+      name: "Admin Benutzer",
+      password: await bcrypt.hash("admin1234", 12),
+      avatar: null,
+      role: "ADMIN",
+      isActive: true,
     },
   });
 
@@ -98,6 +115,7 @@ async function main() {
   console.log("Demo-Zugangsdaten:");
   console.log("  Kunde:   kunde@beispiel.de / demo1234");
   console.log("  Partner: partner@beispiel.de / demo1234");
+  console.log("  Admin:   admin@beispiel.de / admin1234");
 }
 
 main()

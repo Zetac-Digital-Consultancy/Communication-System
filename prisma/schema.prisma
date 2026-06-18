@@ -13,6 +13,8 @@ model User {
   name      String
   password  String
   avatar    String?
+  role      UserRole @default(USER)
+  isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
 
   sentMessages     Message[]      @relation("SentMessages")
@@ -69,6 +71,11 @@ enum MessageType {
   TEXT
   IMAGE
   VIDEO
+}
+
+enum UserRole {
+  USER
+  ADMIN
 }
 
 enum NotificationType {

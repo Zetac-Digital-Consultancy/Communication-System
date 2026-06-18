@@ -117,10 +117,10 @@ export async function POST(request: NextRequest) {
 
   const targetUser = await prisma.user.findUnique({
     where: { id: contactUserId },
-    select: { id: true, name: true, email: true },
+    select: { id: true, name: true, email: true, isActive: true },
   });
 
-  if (!targetUser) {
+  if (!targetUser || !targetUser.isActive) {
     return NextResponse.json(
       { error: de.contacts.userNotFound },
       { status: 404 }

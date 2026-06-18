@@ -45,6 +45,20 @@ export interface AvailableUser {
   email: string;
 }
 
+export interface ManagedUser {
+  id: string;
+  name: string;
+  email: string;
+  role: "USER" | "ADMIN";
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface UserCredentials {
+  email: string;
+  password: string;
+}
+
 export interface ConversationDetail {
   id: string;
   otherUser: User;
