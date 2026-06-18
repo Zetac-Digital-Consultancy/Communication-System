@@ -1,0 +1,76 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  password  String
+  avatar    String?
+  createdAt DateTime @default(now())
+
+  sentMessages     Message[]      @relation("SentMessages")
+  notifications    Notification[]
+  conversationsAsA Conversation[] @relation("ParticipantA")
+  conversationsAsB Conversation[] @relation("ParticipantB")
+}
+
+model Conversation {
+  id             String   @id @default(cuid())
+  participantAId String
+  participantBId String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  participantA User      @relation("ParticipantA", fields: [participantAId], references: [id])
+  participantB User      @relation("ParticipantB", fields: [participantBId], references: [id])
+  messages     Message[]
+
+  @@unique([participantAId, participantBId])
+}
+
+model Message {
+  id             String      @id @default(cuid())
+  conversationId String
+  senderId       String
+  content        String?
+  type           MessageType @default(TEXT)
+  fileUrl        String?
+  fileName       String?
+  createdAt      DateTime    @default(now())
+  readAt         DateTime?
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User         @relation("SentMessages", fields: [senderId], references: [id])
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  title     String
+  body      String
+  messageId String?
+  read      Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  VIDEO
+}
+
+enum NotificationType {
+  MESSAGE
+  IMAGE
+  VIDEO
+}
