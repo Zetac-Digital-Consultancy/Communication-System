@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { de } from "@/lib/de";
+import { isUserContact } from "@/lib/contacts";
 
 function getMessagePreview(
   type: string,
@@ -18,11 +19,27 @@ export async function GET() {
     return NextResponse.json({ error: "Nicht autorisiert" }, { status: 401 });
   }
 
+  const contactIds = await prisma.contact.findMany({
+    where: { userId: session.userId },
+    select: { contactUserId: true },
+  });
+  const contactUserIds = contactIds.map((c) => c.contactUserId);
+
+  if (contactUserIds.length === 0) {
+    return NextResponse.json({ notifications: [], unreadCount: 0 });
+  }
+
   const conversations = await prisma.conversation.findMany({
     where: {
       OR: [
-        { participantAId: session.userId },
-        { participantBId: session.userId },
+        {
+          participantAId: session.userId,
+          participantBId: { in: contactUserIds },
+        },
+        {
+          participantBId: session.userId,
+          participantAId: { in: contactUserIds },
+        },
       ],
     },
     include: {
@@ -64,6 +81,11 @@ export async function GET() {
   const notifications = unreadConversations
     .map((conv, index) => {
       const message = conv.messages[0];
+      const otherUserId =
+        conv.participantAId === session.userId
+          ? conv.participantBId
+          : conv.participantAId;
+
       return {
         id: message.id,
         conversationId: conv.id,
@@ -72,6 +94,7 @@ export async function GET() {
         type: message.type,
         createdAt: message.createdAt,
         unreadCount: unreadCounts[index],
+        contactUserId: otherUserId,
       };
     })
     .sort(

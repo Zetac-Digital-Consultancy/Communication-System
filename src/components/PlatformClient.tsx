@@ -4,17 +4,29 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import ChatArea from "@/components/ChatArea";
-import type { ConversationDetail, Notification } from "@/types";
+import type {
+  AvailableUser,
+  Contact,
+  ConversationDetail,
+  Notification,
+} from "@/types";
+import { de } from "@/lib/de";
 
 const POLL_INTERVAL = 3000;
 
 export default function PlatformClient() {
   const router = useRouter();
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [availableUsers, setAvailableUsers] = useState<AvailableUser[]>([]);
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [activeConversation, setActiveConversation] = useState<ConversationDetail | null>(null);
   const [currentUserName, setCurrentUserName] = useState("");
+  const [showAddContact, setShowAddContact] = useState(false);
+  const [addingContact, setAddingContact] = useState(false);
+  const [addContactError, setAddContactError] = useState("");
+  const [selectedUserId, setSelectedUserId] = useState("");
 
   const fetchNotifications = useCallback(async () => {
     const res = await fetch("/api/notifications");
@@ -25,14 +37,31 @@ export default function PlatformClient() {
     }
   }, []);
 
+  const fetchContacts = useCallback(async () => {
+    const res = await fetch("/api/contacts");
+    if (res.ok) {
+      const data = await res.json();
+      setContacts(data.contacts);
+    }
+  }, []);
+
+  const fetchAvailableUsers = useCallback(async () => {
+    const res = await fetch("/api/users");
+    if (res.ok) {
+      const data = await res.json();
+      setAvailableUsers(data.users);
+    }
+  }, []);
+
   const fetchConversation = useCallback(async (id: string) => {
     const res = await fetch(`/api/conversations/${id}`);
     if (res.ok) {
       const data = await res.json();
       setActiveConversation(data.conversation);
       fetchNotifications();
+      fetchContacts();
     }
-  }, [fetchNotifications]);
+  }, [fetchNotifications, fetchContacts]);
 
   const fetchUser = useCallback(async () => {
     const res = await fetch("/api/auth/me");
@@ -45,7 +74,9 @@ export default function PlatformClient() {
   useEffect(() => {
     fetchUser();
     fetchNotifications();
-  }, [fetchUser, fetchNotifications]);
+    fetchContacts();
+    fetchAvailableUsers();
+  }, [fetchUser, fetchNotifications, fetchContacts, fetchAvailableUsers]);
 
   useEffect(() => {
     if (activeConversationId) {
@@ -58,16 +89,81 @@ export default function PlatformClient() {
   useEffect(() => {
     const interval = setInterval(() => {
       fetchNotifications();
+      fetchContacts();
       if (activeConversationId) {
         fetchConversation(activeConversationId);
       }
     }, POLL_INTERVAL);
 
     return () => clearInterval(interval);
-  }, [activeConversationId, fetchNotifications, fetchConversation]);
+  }, [
+    activeConversationId,
+    fetchNotifications,
+    fetchContacts,
+    fetchConversation,
+  ]);
+
+  async function openChatWithContact(contactUserId: string) {
+    const res = await fetch("/api/conversations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contactUserId }),
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      setActiveConversationId(data.conversation.id);
+      fetchContacts();
+    }
+  }
 
   function handleSelectNotification(conversationId: string) {
     setActiveConversationId(conversationId);
+  }
+
+  function handleSelectContact(contactUserId: string) {
+    openChatWithContact(contactUserId);
+  }
+
+  function handleToggleAddContact() {
+    setShowAddContact((prev) => !prev);
+    setAddContactError("");
+    setSelectedUserId("");
+    if (!showAddContact) {
+      fetchAvailableUsers();
+    }
+  }
+
+  async function handleAddContact() {
+    if (!selectedUserId) return;
+
+    setAddingContact(true);
+    setAddContactError("");
+
+    try {
+      const res = await fetch("/api/contacts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: selectedUserId }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setAddContactError(data.error || de.contacts.addError);
+        return;
+      }
+
+      setShowAddContact(false);
+      setSelectedUserId("");
+      await fetchContacts();
+      await fetchAvailableUsers();
+      await openChatWithContact(data.contact.user.id);
+    } catch {
+      setAddContactError(de.contacts.addError);
+    } finally {
+      setAddingContact(false);
+    }
   }
 
   async function handleLogout() {
@@ -97,6 +193,7 @@ export default function PlatformClient() {
           ? { ...prev, messages: [...prev.messages, data.message] }
           : prev
       );
+      fetchContacts();
     }
   }
 
@@ -104,10 +201,20 @@ export default function PlatformClient() {
     <div className="h-screen flex overflow-hidden">
       <Sidebar
         notifications={notifications}
+        contacts={contacts}
         unreadNotificationCount={unreadNotificationCount}
         activeConversationId={activeConversationId}
         currentUserName={currentUserName}
+        availableUsers={availableUsers}
+        showAddContact={showAddContact}
+        addingContact={addingContact}
+        addContactError={addContactError}
+        selectedUserId={selectedUserId}
+        onSelectContact={handleSelectContact}
         onSelectNotification={handleSelectNotification}
+        onToggleAddContact={handleToggleAddContact}
+        onSelectedUserChange={setSelectedUserId}
+        onAddContact={handleAddContact}
         onLogout={handleLogout}
       />
       <ChatArea

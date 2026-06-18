@@ -2,6 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { de } from "@/lib/de";
+import { isUserContact } from "@/lib/contacts";
+
+async function getOtherParticipantId(
+  conversation: { participantAId: string; participantBId: string },
+  userId: string
+) {
+  return conversation.participantAId === userId
+    ? conversation.participantBId
+    : conversation.participantAId;
+}
 
 export async function GET(
   _request: NextRequest,
@@ -32,6 +42,15 @@ export async function GET(
     return NextResponse.json(
       { error: "Unterhaltung nicht gefunden" },
       { status: 404 }
+    );
+  }
+
+  const otherUserId = await getOtherParticipantId(conversation, session.userId);
+  const isContact = await isUserContact(session.userId, otherUserId);
+  if (!isContact) {
+    return NextResponse.json(
+      { error: de.contacts.notAContact },
+      { status: 403 }
     );
   }
 
@@ -121,6 +140,15 @@ export async function POST(
     return NextResponse.json(
       { error: "Unterhaltung nicht gefunden" },
       { status: 404 }
+    );
+  }
+
+  const otherUserId = await getOtherParticipantId(conversation, session.userId);
+  const isContact = await isUserContact(session.userId, otherUserId);
+  if (!isContact) {
+    return NextResponse.json(
+      { error: de.contacts.notAContact },
+      { status: 403 }
     );
   }
 

@@ -65,6 +65,34 @@ async function main() {
     });
   }
 
+  await prisma.contact.upsert({
+    where: {
+      userId_contactUserId: {
+        userId: client.id,
+        contactUserId: partner.id,
+      },
+    },
+    update: {},
+    create: {
+      userId: client.id,
+      contactUserId: partner.id,
+    },
+  });
+
+  await prisma.contact.upsert({
+    where: {
+      userId_contactUserId: {
+        userId: partner.id,
+        contactUserId: client.id,
+      },
+    },
+    update: {},
+    create: {
+      userId: partner.id,
+      contactUserId: client.id,
+    },
+  });
+
   console.log("Datenbank erfolgreich initialisiert.");
   console.log("");
   console.log("Demo-Zugangsdaten:");

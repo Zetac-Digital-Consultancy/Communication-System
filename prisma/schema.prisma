@@ -19,6 +19,8 @@ model User {
   notifications    Notification[]
   conversationsAsA Conversation[] @relation("ParticipantA")
   conversationsAsB Conversation[] @relation("ParticipantB")
+  contacts         Contact[]      @relation("UserContacts")
+  contactOf        Contact[]      @relation("ContactOf")
 }
 
 model Conversation {
@@ -73,4 +75,16 @@ enum NotificationType {
   MESSAGE
   IMAGE
   VIDEO
+}
+
+model Contact {
+  id            String   @id @default(cuid())
+  userId        String
+  contactUserId String
+  createdAt     DateTime @default(now())
+
+  user        User @relation("UserContacts", fields: [userId], references: [id], onDelete: Cascade)
+  contactUser User @relation("ContactOf", fields: [contactUserId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, contactUserId])
 }
