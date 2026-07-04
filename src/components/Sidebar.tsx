@@ -1,7 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { MessageSquare, Bell, LogOut, UserPlus, Users, Shield } from "lucide-react";
+import {
+  MessageSquare,
+  Bell,
+  LogOut,
+  UserPlus,
+  Users,
+  Shield,
+  CalendarDays,
+} from "lucide-react";
 import { de } from "@/lib/de";
 import { cn, formatRelativeTime, getInitials } from "@/lib/utils";
 import type { Contact, Notification, AvailableUser } from "@/types";
@@ -23,6 +31,8 @@ interface SidebarProps {
   onSelectedUserChange: (userId: string) => void;
   onAddContact: () => void;
   onLogout: () => void;
+  onOpenOwnCalendar: () => void;
+  hiddenOnMobile: boolean;
   isAdmin?: boolean;
   showAdminPanel?: boolean;
   onOpenAdminPanel?: () => void;
@@ -45,12 +55,19 @@ export default function Sidebar({
   onSelectedUserChange,
   onAddContact,
   onLogout,
+  onOpenOwnCalendar,
+  hiddenOnMobile,
   isAdmin = false,
   showAdminPanel = false,
   onOpenAdminPanel,
 }: SidebarProps) {
   return (
-    <aside className="w-80 bg-white border-r border-slate-200 flex flex-col h-full shrink-0">
+    <aside
+      className={cn(
+        "w-full md:w-80 bg-white border-r border-slate-200 flex-col h-full shrink-0",
+        hiddenOnMobile ? "hidden md:flex" : "flex"
+      )}
+    >
       <div className="p-4 border-b border-slate-100">
         <div className="flex items-center gap-3 mb-4">
           <div className="w-9 h-9 bg-brand-600 rounded-lg flex items-center justify-center">
@@ -62,6 +79,13 @@ export default function Sidebar({
             </h1>
             <p className="text-xs text-slate-500 truncate">{currentUserName}</p>
           </div>
+          <button
+            onClick={onOpenOwnCalendar}
+            title={de.calendar.myCalendar}
+            className="p-2 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition"
+          >
+            <CalendarDays className="w-4 h-4" />
+          </button>
           <button
             onClick={onLogout}
             title={de.sidebar.logout}

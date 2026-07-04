@@ -1,7 +1,14 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { Send, Image as ImageIcon, Video, Loader2 } from "lucide-react";
+import {
+  Send,
+  Image as ImageIcon,
+  Video,
+  Loader2,
+  ArrowLeft,
+  CalendarDays,
+} from "lucide-react";
 import { de } from "@/lib/de";
 import { getInitials } from "@/lib/utils";
 import { MessageList } from "./MessageBubble";
@@ -15,9 +22,16 @@ interface ChatAreaProps {
     fileUrl?: string,
     fileName?: string
   ) => Promise<void>;
+  onBack: () => void;
+  onOpenCalendar: (userId: string, userName: string) => void;
 }
 
-export default function ChatArea({ conversation, onSendMessage }: ChatAreaProps) {
+export default function ChatArea({
+  conversation,
+  onSendMessage,
+  onBack,
+  onOpenCalendar,
+}: ChatAreaProps) {
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -26,7 +40,7 @@ export default function ChatArea({ conversation, onSendMessage }: ChatAreaProps)
 
   if (!conversation) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center bg-slate-50">
+      <div className="flex-1 hidden md:flex flex-col items-center justify-center bg-slate-50">
         <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mb-4">
           <Send className="w-8 h-8 text-slate-300" />
         </div>
@@ -54,24 +68,31 @@ export default function ChatArea({ conversation, onSendMessage }: ChatAreaProps)
   }
 
   async function handleFileUpload(file: File, type: "IMAGE" | "VIDEO") {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const uploadRes = await fetch("/api/upload", {
+      method: "POST",
+      body: formData,
+    });
+
+    if (!uploadRes.ok) {
+      const data = await uploadRes.json();
+      alert(data.error || de.errors.uploadFailed);
+      return;
+    }
+
+    const { fileUrl, fileName } = await uploadRes.json();
+    await onSendMessage("", type, fileUrl, fileName);
+  }
+
+  async function handleFilesUpload(files: File[], type: "IMAGE" | "VIDEO") {
     setUploading(true);
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-
-      const uploadRes = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!uploadRes.ok) {
-        const data = await uploadRes.json();
-        alert(data.error || de.errors.uploadFailed);
-        return;
+      // Sequential upload keeps the order and lets the chat bundle them
+      for (const file of files) {
+        await handleFileUpload(file, type);
       }
-
-      const { fileUrl, fileName } = await uploadRes.json();
-      await onSendMessage("", type, fileUrl, fileName);
     } catch {
       alert(de.errors.uploadFailed);
     } finally {
@@ -80,25 +101,31 @@ export default function ChatArea({ conversation, onSendMessage }: ChatAreaProps)
   }
 
   function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (file) handleFileUpload(file, "IMAGE");
+    const files = Array.from(e.target.files ?? []);
+    if (files.length > 0) handleFilesUpload(files, "IMAGE");
     e.target.value = "";
   }
 
   function handleVideoSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (file) handleFileUpload(file, "VIDEO");
+    if (file) handleFilesUpload([file], "VIDEO");
     e.target.value = "";
   }
 
   return (
     <div className="flex-1 flex flex-col bg-slate-50 min-w-0">
-      <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center gap-3 shrink-0">
-        <div className="w-10 h-10 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center text-sm font-semibold">
+      <header className="bg-white border-b border-slate-200 px-3 md:px-6 py-3 md:py-4 flex items-center gap-2 md:gap-3 shrink-0">
+        <button
+          onClick={onBack}
+          className="md:hidden p-2 -ml-1 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition"
+        >
+          <ArrowLeft className="w-5 h-5" />
+        </button>
+        <div className="w-10 h-10 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center text-sm font-semibold shrink-0">
           {getInitials(conversation.otherUser.name)}
         </div>
-        <div>
-          <h2 className="font-semibold text-slate-900">
+        <div className="flex-1 min-w-0">
+          <h2 className="font-semibold text-slate-900 truncate">
             {conversation.otherUser.name}
           </h2>
           <p className="text-xs text-green-600 flex items-center gap-1">
@@ -106,11 +133,20 @@ export default function ChatArea({ conversation, onSendMessage }: ChatAreaProps)
             {de.sidebar.online}
           </p>
         </div>
+        <button
+          onClick={() =>
+            onOpenCalendar(conversation.otherUser.id, conversation.otherUser.name)
+          }
+          title={de.calendar.openCalendar}
+          className="p-2.5 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition"
+        >
+          <CalendarDays className="w-5 h-5" />
+        </button>
       </header>
 
       <MessageList messages={conversation.messages} />
 
-      <footer className="bg-white border-t border-slate-200 p-4 shrink-0">
+      <footer className="bg-white border-t border-slate-200 p-3 md:p-4 shrink-0">
         {uploading && (
           <div className="flex items-center gap-2 text-sm text-slate-500 mb-2">
             <Loader2 className="w-4 h-4 animate-spin" />
@@ -122,6 +158,7 @@ export default function ChatArea({ conversation, onSendMessage }: ChatAreaProps)
             ref={imageInputRef}
             type="file"
             accept="image/jpeg,image/png,image/gif,image/webp"
+            multiple
             className="hidden"
             onChange={handleImageSelect}
           />

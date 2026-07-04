@@ -17,12 +17,13 @@ model User {
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
 
-  sentMessages     Message[]      @relation("SentMessages")
-  notifications    Notification[]
-  conversationsAsA Conversation[] @relation("ParticipantA")
-  conversationsAsB Conversation[] @relation("ParticipantB")
-  contacts         Contact[]      @relation("UserContacts")
-  contactOf        Contact[]      @relation("ContactOf")
+  sentMessages      Message[]          @relation("SentMessages")
+  notifications     Notification[]
+  conversationsAsA  Conversation[]     @relation("ParticipantA")
+  conversationsAsB  Conversation[]     @relation("ParticipantB")
+  contacts          Contact[]          @relation("UserContacts")
+  contactOf         Contact[]          @relation("ContactOf")
+  availabilitySlots AvailabilitySlot[]
 }
 
 model Conversation {
@@ -82,6 +83,25 @@ enum NotificationType {
   MESSAGE
   IMAGE
   VIDEO
+}
+
+model AvailabilitySlot {
+  id        String           @id @default(cuid())
+  userId    String
+  start     DateTime
+  end       DateTime
+  type      AvailabilityType @default(FREE)
+  note      String?
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, start])
+}
+
+enum AvailabilityType {
+  FREE
+  BUSY
 }
 
 model Contact {

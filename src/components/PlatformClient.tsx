@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import ChatArea from "@/components/ChatArea";
 import AdminPanel from "@/components/AdminPanel";
+import CalendarModal from "@/components/CalendarModal";
 import type {
   AvailableUser,
   Contact,
@@ -30,6 +31,11 @@ export default function PlatformClient() {
   const [addingContact, setAddingContact] = useState(false);
   const [addContactError, setAddContactError] = useState("");
   const [selectedUserId, setSelectedUserId] = useState("");
+  // null = closed; { userId: null } = own calendar (editable)
+  const [calendarTarget, setCalendarTarget] = useState<{
+    userId: string | null;
+    userName: string | null;
+  } | null>(null);
 
   const fetchNotifications = useCallback(async () => {
     const res = await fetch("/api/notifications");
@@ -209,8 +215,10 @@ export default function PlatformClient() {
     }
   }
 
+  const showChatPane = showAdminPanel || activeConversationId !== null;
+
   return (
-    <div className="h-screen flex overflow-hidden">
+    <div className="h-dvh flex overflow-hidden">
       <Sidebar
         notifications={notifications}
         contacts={contacts}
@@ -228,16 +236,36 @@ export default function PlatformClient() {
         onSelectedUserChange={setSelectedUserId}
         onAddContact={handleAddContact}
         onLogout={handleLogout}
+        onOpenOwnCalendar={() =>
+          setCalendarTarget({ userId: null, userName: null })
+        }
+        hiddenOnMobile={showChatPane}
         isAdmin={isAdmin}
         showAdminPanel={showAdminPanel}
         onOpenAdminPanel={handleOpenAdminPanel}
       />
       {showAdminPanel && isAdmin ? (
-        <AdminPanel />
+        <AdminPanel
+          onBack={() => setShowAdminPanel(false)}
+          onOpenCalendar={(userId, userName) =>
+            setCalendarTarget({ userId, userName })
+          }
+        />
       ) : (
         <ChatArea
           conversation={activeConversation}
           onSendMessage={handleSendMessage}
+          onBack={() => setActiveConversationId(null)}
+          onOpenCalendar={(userId, userName) =>
+            setCalendarTarget({ userId, userName })
+          }
+        />
+      )}
+      {calendarTarget && (
+        <CalendarModal
+          userId={calendarTarget.userId}
+          userName={calendarTarget.userName}
+          onClose={() => setCalendarTarget(null)}
         />
       )}
     </div>

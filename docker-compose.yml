@@ -1,0 +1,18 @@
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    environment:
+      # SQLite file lives on the app-data volume
+      DATABASE_URL: file:/app/data/app.db
+    volumes:
+      - app-data:/app/data
+      - app-uploads:/app/public/uploads
+    restart: unless-stopped
+
+volumes:
+  app-data:
+  app-uploads:

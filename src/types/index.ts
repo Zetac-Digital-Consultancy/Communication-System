@@ -59,6 +59,15 @@ export interface UserCredentials {
   password: string;
 }
 
+export interface AvailabilitySlot {
+  id: string;
+  userId: string;
+  start: string;
+  end: string;
+  type: "FREE" | "BUSY";
+  note: string | null;
+}
+
 export interface ConversationDetail {
   id: string;
   otherUser: User;

@@ -1,12 +1,17 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Shield, UserPlus, Loader2 } from "lucide-react";
+import { Shield, UserPlus, Loader2, ArrowLeft } from "lucide-react";
 import { de } from "@/lib/de";
 import { cn, getInitials } from "@/lib/utils";
 import type { ManagedUser, UserCredentials } from "@/types";
 
-export default function AdminPanel() {
+interface AdminPanelProps {
+  onBack: () => void;
+  onOpenCalendar: (userId: string, userName: string) => void;
+}
+
+export default function AdminPanel({ onBack, onOpenCalendar }: AdminPanelProps) {
   const [users, setUsers] = useState<ManagedUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
@@ -169,13 +174,19 @@ export default function AdminPanel() {
 
   return (
     <div className="flex-1 flex flex-col bg-slate-50 min-w-0">
-      <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center gap-3 shrink-0">
-        <div className="w-10 h-10 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center">
+      <header className="bg-white border-b border-slate-200 px-3 md:px-6 py-3 md:py-4 flex items-center gap-2 md:gap-3 shrink-0">
+        <button
+          onClick={onBack}
+          className="md:hidden p-2 -ml-1 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition"
+        >
+          <ArrowLeft className="w-5 h-5" />
+        </button>
+        <div className="w-10 h-10 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center shrink-0">
           <Shield className="w-5 h-5" />
         </div>
-        <div className="flex-1">
-          <h2 className="font-semibold text-slate-900">{de.admin.title}</h2>
-          <p className="text-xs text-slate-500">{de.admin.subtitle}</p>
+        <div className="flex-1 min-w-0">
+          <h2 className="font-semibold text-slate-900 truncate">{de.admin.title}</h2>
+          <p className="text-xs text-slate-500 truncate">{de.admin.subtitle}</p>
         </div>
         <button
           onClick={openCreate}
@@ -186,7 +197,7 @@ export default function AdminPanel() {
         </button>
       </header>
 
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-y-auto p-4 md:p-6">
         {credentials && (
           <div className="mb-4 p-4 bg-white border border-brand-200 rounded-xl shadow-sm">
             <p className="text-sm font-medium text-slate-900 mb-1">
@@ -391,6 +402,12 @@ export default function AdminPanel() {
                       className="text-xs text-brand-600 hover:text-brand-700 font-medium"
                     >
                       {de.admin.editUser}
+                    </button>
+                    <button
+                      onClick={() => onOpenCalendar(user.id, user.name)}
+                      className="text-xs text-brand-600 hover:text-brand-700 font-medium"
+                    >
+                      {de.calendar.title}
                     </button>
                     {user.isActive ? (
                       <button
