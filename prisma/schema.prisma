@@ -14,6 +14,7 @@ model User {
   password  String
   avatar    String?
   role      UserRole @default(USER)
+  userType  UserType @default(KUNDE)
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
 
@@ -77,6 +78,11 @@ enum MessageType {
 enum UserRole {
   USER
   ADMIN
+}
+
+enum UserType {
+  KUNDE
+  PARTNER
 }
 
 enum NotificationType {

@@ -26,6 +26,7 @@ export default function PlatformClient() {
   const [activeConversation, setActiveConversation] = useState<ConversationDetail | null>(null);
   const [currentUserName, setCurrentUserName] = useState("");
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isKunde, setIsKunde] = useState(false);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [showAddContact, setShowAddContact] = useState(false);
   const [addingContact, setAddingContact] = useState(false);
@@ -78,6 +79,7 @@ export default function PlatformClient() {
       const data = await res.json();
       setCurrentUserName(data.user.name);
       setIsAdmin(data.user.isAdmin === true);
+      setIsKunde(data.user.userType === "KUNDE");
     }
   }, []);
 
@@ -236,8 +238,10 @@ export default function PlatformClient() {
         onSelectedUserChange={setSelectedUserId}
         onAddContact={handleAddContact}
         onLogout={handleLogout}
-        onOpenOwnCalendar={() =>
-          setCalendarTarget({ userId: null, userName: null })
+        onOpenOwnCalendar={
+          isKunde
+            ? () => setCalendarTarget({ userId: null, userName: null })
+            : undefined
         }
         hiddenOnMobile={showChatPane}
         isAdmin={isAdmin}

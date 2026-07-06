@@ -16,8 +16,15 @@ export async function PATCH(
 
   const { id } = await params;
   const body = await request.json();
-  const { name, email, role, isActive, password, generatePassword: shouldGenerate } =
-    body;
+  const {
+    name,
+    email,
+    role,
+    userType,
+    isActive,
+    password,
+    generatePassword: shouldGenerate,
+  } = body;
 
   const user = await prisma.user.findUnique({ where: { id } });
   if (!user) {
@@ -55,6 +62,7 @@ export async function PATCH(
     name?: string;
     email?: string;
     role?: "USER" | "ADMIN";
+    userType?: "KUNDE" | "PARTNER";
     isActive?: boolean;
     password?: string;
   } = {};
@@ -62,6 +70,8 @@ export async function PATCH(
   if (name?.trim()) updateData.name = name.trim();
   if (email?.trim()) updateData.email = email.toLowerCase().trim();
   if (role === "ADMIN" || role === "USER") updateData.role = role;
+  if (userType === "KUNDE" || userType === "PARTNER")
+    updateData.userType = userType;
   if (typeof isActive === "boolean") updateData.isActive = isActive;
 
   let plainPassword: string | null = null;
@@ -87,6 +97,7 @@ export async function PATCH(
       name: true,
       email: true,
       role: true,
+      userType: true,
       isActive: true,
       createdAt: true,
     },

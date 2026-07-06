@@ -133,15 +133,20 @@ export default function ChatArea({
             {de.sidebar.online}
           </p>
         </div>
-        <button
-          onClick={() =>
-            onOpenCalendar(conversation.otherUser.id, conversation.otherUser.name)
-          }
-          title={de.calendar.openCalendar}
-          className="p-2.5 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition"
-        >
-          <CalendarDays className="w-5 h-5" />
-        </button>
+        {conversation.otherUser.userType === "KUNDE" && (
+          <button
+            onClick={() =>
+              onOpenCalendar(
+                conversation.otherUser.id,
+                conversation.otherUser.name
+              )
+            }
+            title={de.calendar.openCalendar}
+            className="p-2.5 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition"
+          >
+            <CalendarDays className="w-5 h-5" />
+          </button>
+        )}
       </header>
 
       <MessageList messages={conversation.messages} />

@@ -33,8 +33,12 @@ export async function GET(
       ],
     },
     include: {
-      participantA: { select: { id: true, name: true, email: true } },
-      participantB: { select: { id: true, name: true, email: true } },
+      participantA: {
+        select: { id: true, name: true, email: true, userType: true },
+      },
+      participantB: {
+        select: { id: true, name: true, email: true, userType: true },
+      },
     },
   });
 

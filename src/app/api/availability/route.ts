@@ -33,6 +33,18 @@ export async function GET(request: NextRequest) {
   const from = searchParams.get("from");
   const to = searchParams.get("to");
 
+  // Only Kunden have a calendar
+  const targetUser = await prisma.user.findUnique({
+    where: { id: targetUserId },
+    select: { userType: true },
+  });
+  if (!targetUser || targetUser.userType !== "KUNDE") {
+    return NextResponse.json(
+      { error: de.calendar.noCalendar },
+      { status: 404 }
+    );
+  }
+
   // Admins can view every calendar; others only their own and their contacts'
   if (targetUserId !== session.userId && session.role !== "ADMIN") {
     const isContact = await isUserContact(session.userId, targetUserId);
@@ -63,6 +75,18 @@ export async function POST(request: NextRequest) {
   const session = await requireAuth();
   if (!session) {
     return NextResponse.json({ error: "Nicht autorisiert" }, { status: 401 });
+  }
+
+  // Only Kunden manage a calendar
+  const currentUser = await prisma.user.findUnique({
+    where: { id: session.userId },
+    select: { userType: true },
+  });
+  if (!currentUser || currentUser.userType !== "KUNDE") {
+    return NextResponse.json(
+      { error: de.calendar.onlyKunde },
+      { status: 403 }
+    );
   }
 
   const body = await request.json();

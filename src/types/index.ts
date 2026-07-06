@@ -1,7 +1,10 @@
+export type UserType = "KUNDE" | "PARTNER";
+
 export interface User {
   id: string;
   name: string;
   email: string;
+  userType?: UserType;
 }
 
 export interface Message {
@@ -50,6 +53,7 @@ export interface ManagedUser {
   name: string;
   email: string;
   role: "USER" | "ADMIN";
+  userType: UserType;
   isActive: boolean;
   createdAt: string;
 }

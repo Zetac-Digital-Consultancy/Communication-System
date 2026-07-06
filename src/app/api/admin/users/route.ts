@@ -10,6 +10,7 @@ function formatUser(user: {
   name: string;
   email: string;
   role: string;
+  userType: string;
   isActive: boolean;
   createdAt: Date;
 }) {
@@ -18,6 +19,7 @@ function formatUser(user: {
     name: user.name,
     email: user.email,
     role: user.role,
+    userType: user.userType,
     isActive: user.isActive,
     createdAt: user.createdAt,
   };
@@ -35,6 +37,7 @@ export async function GET() {
       name: true,
       email: true,
       role: true,
+      userType: true,
       isActive: true,
       createdAt: true,
     },
@@ -51,8 +54,14 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json();
-  const { name, email, password, role = "USER", generatePassword: shouldGenerate } =
-    body;
+  const {
+    name,
+    email,
+    password,
+    role = "USER",
+    userType = "KUNDE",
+    generatePassword: shouldGenerate,
+  } = body;
 
   if (!name?.trim() || !email?.trim()) {
     return NextResponse.json(
@@ -92,6 +101,7 @@ export async function POST(request: NextRequest) {
       email: normalizedEmail,
       password: hashedPassword,
       role: role === "ADMIN" ? "ADMIN" : "USER",
+      userType: userType === "PARTNER" ? "PARTNER" : "KUNDE",
       isActive: true,
     },
     select: {
@@ -99,6 +109,7 @@ export async function POST(request: NextRequest) {
       name: true,
       email: true,
       role: true,
+      userType: true,
       isActive: true,
       createdAt: true,
     },

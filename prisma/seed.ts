@@ -8,39 +8,42 @@ async function main() {
 
   const client = await prisma.user.upsert({
     where: { email: "kunde@beispiel.de" },
-    update: {},
+    update: { userType: "KUNDE" },
     create: {
       email: "kunde@beispiel.de",
       name: "Max Mustermann",
       password,
       avatar: null,
       role: "USER",
+      userType: "KUNDE",
       isActive: true,
     },
   });
 
   const partner = await prisma.user.upsert({
     where: { email: "partner@beispiel.de" },
-    update: {},
+    update: { userType: "PARTNER" },
     create: {
       email: "partner@beispiel.de",
       name: "Anna Schmidt",
       password,
       avatar: null,
       role: "USER",
+      userType: "PARTNER",
       isActive: true,
     },
   });
 
   const _admin = await prisma.user.upsert({
     where: { email: "admin@beispiel.de" },
-    update: { role: "ADMIN", isActive: true },
+    update: { role: "ADMIN", userType: "PARTNER", isActive: true },
     create: {
       email: "admin@beispiel.de",
       name: "Admin Benutzer",
       password: await bcrypt.hash("admin1234", 12),
       avatar: null,
       role: "ADMIN",
+      userType: "PARTNER",
       isActive: true,
     },
   });

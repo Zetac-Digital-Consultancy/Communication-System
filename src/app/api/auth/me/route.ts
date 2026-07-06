@@ -10,7 +10,14 @@ export async function GET() {
 
   const user = await prisma.user.findUnique({
     where: { id: session.userId },
-    select: { id: true, email: true, name: true, role: true, isActive: true },
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      role: true,
+      userType: true,
+      isActive: true,
+    },
   });
 
   if (!user || !user.isActive) {
@@ -23,6 +30,7 @@ export async function GET() {
       email: user.email,
       name: user.name,
       role: user.role,
+      userType: user.userType,
       isAdmin: user.role === "ADMIN",
     },
   });

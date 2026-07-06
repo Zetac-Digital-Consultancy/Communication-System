@@ -24,6 +24,7 @@ export default function AdminPanel({ onBack, onOpenCalendar }: AdminPanelProps) 
   const [formEmail, setFormEmail] = useState("");
   const [formPassword, setFormPassword] = useState("");
   const [formRole, setFormRole] = useState<"USER" | "ADMIN">("USER");
+  const [formUserType, setFormUserType] = useState<"KUNDE" | "PARTNER">("KUNDE");
   const [formGeneratePassword, setFormGeneratePassword] = useState(true);
   const [formIsActive, setFormIsActive] = useState(true);
 
@@ -45,6 +46,7 @@ export default function AdminPanel({ onBack, onOpenCalendar }: AdminPanelProps) 
     setFormEmail("");
     setFormPassword("");
     setFormRole("USER");
+    setFormUserType("KUNDE");
     setFormGeneratePassword(true);
     setFormIsActive(true);
     setError("");
@@ -63,6 +65,7 @@ export default function AdminPanel({ onBack, onOpenCalendar }: AdminPanelProps) 
     setFormEmail(user.email);
     setFormPassword("");
     setFormRole(user.role);
+    setFormUserType(user.userType);
     setFormGeneratePassword(false);
     setFormIsActive(user.isActive);
     setError("");
@@ -81,6 +84,7 @@ export default function AdminPanel({ onBack, onOpenCalendar }: AdminPanelProps) 
           email: formEmail,
           password: formGeneratePassword ? undefined : formPassword,
           role: formRole,
+          userType: formUserType,
           generatePassword: formGeneratePassword,
         }),
       });
@@ -116,6 +120,7 @@ export default function AdminPanel({ onBack, onOpenCalendar }: AdminPanelProps) 
           name: formName,
           email: formEmail,
           role: formRole,
+          userType: formUserType,
           isActive: formIsActive,
           password: formGeneratePassword ? undefined : formPassword || undefined,
           generatePassword: formGeneratePassword && !formPassword,
@@ -267,6 +272,21 @@ export default function AdminPanel({ onBack, onOpenCalendar }: AdminPanelProps) 
                   <option value="ADMIN">{de.admin.roleAdmin}</option>
                 </select>
               </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1">
+                  {de.admin.userType}
+                </label>
+                <select
+                  value={formUserType}
+                  onChange={(e) =>
+                    setFormUserType(e.target.value as "KUNDE" | "PARTNER")
+                  }
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                >
+                  <option value="KUNDE">{de.admin.typeKunde}</option>
+                  <option value="PARTNER">{de.admin.typePartner}</option>
+                </select>
+              </div>
               {editingUser && (
                 <div>
                   <label className="block text-xs font-medium text-slate-700 mb-1">
@@ -371,17 +391,31 @@ export default function AdminPanel({ onBack, onOpenCalendar }: AdminPanelProps) 
                     <span className="font-medium text-sm text-slate-900 truncate">
                       {user.name}
                     </span>
-                    <span
-                      className={cn(
-                        "text-xs px-2 py-0.5 rounded-full shrink-0",
-                        user.role === "ADMIN"
-                          ? "bg-purple-100 text-purple-700"
-                          : "bg-slate-100 text-slate-600"
-                      )}
-                    >
-                      {user.role === "ADMIN"
-                        ? de.admin.roleAdmin
-                        : de.admin.roleUser}
+                    <span className="flex items-center gap-1 shrink-0">
+                      <span
+                        className={cn(
+                          "text-xs px-2 py-0.5 rounded-full",
+                          user.userType === "KUNDE"
+                            ? "bg-green-100 text-green-700"
+                            : "bg-blue-100 text-blue-700"
+                        )}
+                      >
+                        {user.userType === "KUNDE"
+                          ? de.admin.typeKunde
+                          : de.admin.typePartner}
+                      </span>
+                      <span
+                        className={cn(
+                          "text-xs px-2 py-0.5 rounded-full",
+                          user.role === "ADMIN"
+                            ? "bg-purple-100 text-purple-700"
+                            : "bg-slate-100 text-slate-600"
+                        )}
+                      >
+                        {user.role === "ADMIN"
+                          ? de.admin.roleAdmin
+                          : de.admin.roleUser}
+                      </span>
                     </span>
                   </div>
                   <p className="text-xs text-slate-500 truncate mt-0.5">
@@ -403,12 +437,14 @@ export default function AdminPanel({ onBack, onOpenCalendar }: AdminPanelProps) 
                     >
                       {de.admin.editUser}
                     </button>
-                    <button
-                      onClick={() => onOpenCalendar(user.id, user.name)}
-                      className="text-xs text-brand-600 hover:text-brand-700 font-medium"
-                    >
-                      {de.calendar.title}
-                    </button>
+                    {user.userType === "KUNDE" && (
+                      <button
+                        onClick={() => onOpenCalendar(user.id, user.name)}
+                        className="text-xs text-brand-600 hover:text-brand-700 font-medium"
+                      >
+                        {de.calendar.title}
+                      </button>
+                    )}
                     {user.isActive ? (
                       <button
                         onClick={() => handleDeactivate(user)}

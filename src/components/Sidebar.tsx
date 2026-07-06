@@ -31,7 +31,8 @@ interface SidebarProps {
   onSelectedUserChange: (userId: string) => void;
   onAddContact: () => void;
   onLogout: () => void;
-  onOpenOwnCalendar: () => void;
+  // Only Kunden have an own calendar
+  onOpenOwnCalendar?: () => void;
   hiddenOnMobile: boolean;
   isAdmin?: boolean;
   showAdminPanel?: boolean;
@@ -79,13 +80,15 @@ export default function Sidebar({
             </h1>
             <p className="text-xs text-slate-500 truncate">{currentUserName}</p>
           </div>
-          <button
-            onClick={onOpenOwnCalendar}
-            title={de.calendar.myCalendar}
-            className="p-2 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition"
-          >
-            <CalendarDays className="w-4 h-4" />
-          </button>
+          {onOpenOwnCalendar && (
+            <button
+              onClick={onOpenOwnCalendar}
+              title={de.calendar.myCalendar}
+              className="p-2 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition"
+            >
+              <CalendarDays className="w-4 h-4" />
+            </button>
+          )}
           <button
             onClick={onLogout}
             title={de.sidebar.logout}
