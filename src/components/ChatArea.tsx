@@ -22,9 +22,9 @@ interface ChatAreaProps {
     fileUrl?: string,
     fileName?: string
   ) => Promise<void>;
-<<<<<<< Updated upstream
   onBack: () => void;
   onOpenCalendar: (userId: string, userName: string) => void;
+  error?: string | null;
 }
 
 export default function ChatArea({
@@ -32,19 +32,13 @@ export default function ChatArea({
   onSendMessage,
   onBack,
   onOpenCalendar,
+  error,
 }: ChatAreaProps) {
-=======
-  error?: string | null;
-}
-
-export default function ChatArea({ conversation, onSendMessage, error }: ChatAreaProps) {
->>>>>>> Stashed changes
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [uploading, setUploading] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
-
   if (!conversation) {
     return (
       <div className="flex-1 hidden md:flex flex-col items-center justify-center bg-slate-50">

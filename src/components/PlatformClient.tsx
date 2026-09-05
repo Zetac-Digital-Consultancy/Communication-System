@@ -265,7 +265,6 @@ export default function PlatformClient() {
         <ChatArea
           conversation={activeConversation}
           onSendMessage={handleSendMessage}
-<<<<<<< Updated upstream
           onBack={() => setActiveConversationId(null)}
           onOpenCalendar={(userId, userName) =>
             setCalendarTarget({ userId, userName })
@@ -277,9 +276,6 @@ export default function PlatformClient() {
           userId={calendarTarget.userId}
           userName={calendarTarget.userName}
           onClose={() => setCalendarTarget(null)}
-=======
-          error={conversationError}
->>>>>>> Stashed changes
         />
       )}
     </div>

@@ -1,17 +1,33 @@
 services:
   app:
     build: .
-    ports:
-      - "3000:3000"
+    image: communication-system
+    container_name: communication-system
+    # Reachable only via the shared nginx-proxy (communication-system.zetac.de); no public host port.
     env_file:
       - .env
     environment:
       # SQLite file lives on the app-data volume
       DATABASE_URL: file:/app/data/app.db
+      # Register with the shared nginx-proxy + acme-companion for HTTPS
+      VIRTUAL_HOST: communication-system.zetac.de
+      VIRTUAL_PORT: "3000"
+      LETSENCRYPT_HOST: communication-system.zetac.de
+      LETSENCRYPT_EMAIL: info@zetac.de
     volumes:
       - app-data:/app/data
       - app-uploads:/app/public/uploads
+    networks:
+      - default
+      - proxy
     restart: unless-stopped
+
+networks:
+  # default: implicit per-stack bridge
+  default:
+  # shared reverse-proxy network, created/owned by /root/reverse-proxy
+  proxy:
+    external: true
 
 volumes:
   app-data:
