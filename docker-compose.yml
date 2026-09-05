@@ -9,6 +9,9 @@ services:
     environment:
       # SQLite file lives on the app-data volume
       DATABASE_URL: file:/app/data/app.db
+      UPLOAD_DIR: /app/uploads
+      APP_URL: https://communication-system.zetac.de
+      COOKIE_SECURE: "true"
       # Register with the shared nginx-proxy + acme-companion for HTTPS
       VIRTUAL_HOST: communication-system.zetac.de
       VIRTUAL_PORT: "3000"
@@ -16,7 +19,7 @@ services:
       LETSENCRYPT_EMAIL: info@zetac.de
     volumes:
       - app-data:/app/data
-      - app-uploads:/app/public/uploads
+      - app-uploads:/app/uploads
     networks:
       - default
       - proxy

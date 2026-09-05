@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 const prisma = new PrismaClient();
 
 async function main() {
+  if (process.env.NODE_ENV === "production") throw new Error("Demo seeding is disabled in production.");
   const password = await bcrypt.hash("demo1234", 12);
 
   const client = await prisma.user.upsert({

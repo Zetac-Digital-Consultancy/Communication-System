@@ -4,6 +4,8 @@ import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { generatePassword } from "@/lib/password.server";
 import { de } from "@/lib/de";
+import { validFields, validEmail } from "@/lib/validation";
+import { deleteUser } from "@/lib/delete-user";
 
 export async function PATCH(
   request: NextRequest,
@@ -15,7 +17,11 @@ export async function PATCH(
   }
 
   const { id } = await params;
-  const body = await request.json();
+  const body = await request.json().catch(() => null);
+  if (!validFields(body, { name: 100, email: 254, password: 72, role: 10, userType: 10 }, ["generatePassword", "isActive"]) ||
+      (body.email !== undefined && !validEmail(body.email))) {
+    return NextResponse.json({ error: "Ungültige Benutzerdaten" }, { status: 400 });
+  }
   const {
     name,
     email,
@@ -65,6 +71,7 @@ export async function PATCH(
     userType?: "KUNDE" | "PARTNER";
     isActive?: boolean;
     password?: string;
+    sessionVersion?: { increment: number };
   } = {};
 
   if (name?.trim()) updateData.name = name.trim();
@@ -79,9 +86,9 @@ export async function PATCH(
     plainPassword = generatePassword();
     updateData.password = await bcrypt.hash(plainPassword, 12);
   } else if (password) {
-    if (password.length < 6) {
+    if (password.length < 12 || Buffer.byteLength(password) > 72) {
       return NextResponse.json(
-        { error: de.admin.passwordTooShort },
+        { error: "Passwort muss mindestens 12 Zeichen und höchstens 72 UTF-8-Bytes enthalten." },
         { status: 400 }
       );
     }
@@ -91,7 +98,7 @@ export async function PATCH(
 
   const updated = await prisma.user.update({
     where: { id },
-    data: updateData,
+    data: { ...updateData, ...(updateData.password || isActive === false ? { sessionVersion: { increment: 1 } } : {}) },
     select: {
       id: true,
       name: true,
@@ -137,13 +144,13 @@ export async function DELETE(
   const hard = request.nextUrl.searchParams.get("hard") === "true";
 
   if (hard) {
-    await prisma.user.delete({ where: { id } });
+    await deleteUser(id);
     return NextResponse.json({ success: true, deleted: true });
   }
 
   const updated = await prisma.user.update({
     where: { id },
-    data: { isActive: false },
+    data: { isActive: false, sessionVersion: { increment: 1 } },
     select: {
       id: true,
       name: true,

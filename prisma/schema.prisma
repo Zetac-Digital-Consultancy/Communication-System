@@ -2,6 +2,14 @@ generator client {
   provider = "prisma-client-js"
 }
 
+model LoginAttempt {
+  key String @id
+  count Int
+  expiresAt DateTime
+
+  @@index([expiresAt])
+}
+
 datasource db {
   provider = "sqlite"
   url      = env("DATABASE_URL")
@@ -16,6 +24,7 @@ model User {
   role      UserRole @default(USER)
   userType  UserType @default(KUNDE)
   isActive  Boolean  @default(true)
+  sessionVersion Int @default(0)
   createdAt DateTime @default(now())
 
   sentMessages      Message[]          @relation("SentMessages")
@@ -25,6 +34,10 @@ model User {
   contacts          Contact[]          @relation("UserContacts")
   contactOf         Contact[]          @relation("ContactOf")
   availabilitySlots AvailabilitySlot[]
+  blocks UserBlock[] @relation("Blocker")
+  blockedBy UserBlock[] @relation("Blocked")
+  reports AbuseReport[] @relation("Reporter")
+  reportsAgainst AbuseReport[] @relation("Reported")
 }
 
 model Conversation {
@@ -54,6 +67,9 @@ model Message {
 
   conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   sender       User         @relation("SentMessages", fields: [senderId], references: [id])
+
+  @@index([conversationId, createdAt])
+  @@index([fileUrl])
 }
 
 model Notification {
@@ -67,6 +83,8 @@ model Notification {
   createdAt DateTime         @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read])
 }
 
 enum MessageType {
@@ -120,4 +138,24 @@ model Contact {
   contactUser User @relation("ContactOf", fields: [contactUserId], references: [id], onDelete: Cascade)
 
   @@unique([userId, contactUserId])
+}
+
+model UserBlock {
+  blockerId String
+  blockedId String
+  blocker User @relation("Blocker", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked User @relation("Blocked", fields: [blockedId], references: [id], onDelete: Cascade)
+  @@id([blockerId, blockedId])
+}
+
+model AbuseReport {
+  id String @id @default(cuid())
+  reporterId String
+  reportedId String
+  reason String
+  resolved Boolean @default(false)
+  createdAt DateTime @default(now())
+  reporter User @relation("Reporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  reported User @relation("Reported", fields: [reportedId], references: [id], onDelete: Cascade)
+  @@index([resolved, createdAt])
 }

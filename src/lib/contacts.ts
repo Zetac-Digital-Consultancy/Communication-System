@@ -4,6 +4,7 @@ export async function isUserContact(
   userId: string,
   contactUserId: string
 ): Promise<boolean> {
+  if (await isBlocked(userId, contactUserId)) return false;
   const contact = await prisma.contact.findUnique({
     where: {
       userId_contactUserId: {
@@ -13,6 +14,12 @@ export async function isUserContact(
     },
   });
   return !!contact;
+}
+
+export async function isBlocked(userId: string, otherId: string): Promise<boolean> {
+  return !!await prisma.userBlock.findFirst({ where: { OR: [
+    { blockerId: userId, blockedId: otherId }, { blockerId: otherId, blockedId: userId },
+  ] } });
 }
 
 export async function findConversationBetween(
@@ -38,8 +45,10 @@ export async function getOrCreateConversation(
 
   const [participantAId, participantBId] = [userId1, userId2].sort();
 
-  return prisma.conversation.create({
-    data: {
+  return prisma.conversation.upsert({
+    where: { participantAId_participantBId: { participantAId, participantBId } },
+    update: {},
+    create: {
       participantAId,
       participantBId,
     },

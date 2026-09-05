@@ -79,6 +79,7 @@ export default function Sidebar({
               {de.app.name}
             </h1>
             <p className="text-xs text-slate-500 truncate">{currentUserName}</p>
+            <a href="/support" className="text-xs text-slate-500 underline">Hilfe & Datenschutz</a>
           </div>
           {onOpenOwnCalendar && (
             <button

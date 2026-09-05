@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { findConversationBetween } from "@/lib/contacts";
+import { findConversationBetween, isBlocked } from "@/lib/contacts";
 import { de } from "@/lib/de";
+import { validFields } from "@/lib/validation";
 
 function getMessagePreview(type: string, content: string | null): string {
   if (type === "IMAGE") return `📷 ${de.chat.image}`;
@@ -82,7 +83,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Nicht autorisiert" }, { status: 401 });
   }
 
-  const body = await request.json();
+  const body = await request.json().catch(() => null);
+  if (!validFields(body, { userId: 100, email: 254 })) return NextResponse.json({ error: "Ungültige Anfrage" }, { status: 400 });
   const { userId, email } = body;
 
   let contactUserId = userId as string | undefined;
@@ -113,6 +115,10 @@ export async function POST(request: NextRequest) {
       { error: de.contacts.cannotAddSelf },
       { status: 400 }
     );
+  }
+
+  if (await isBlocked(session.userId, contactUserId)) {
+    return NextResponse.json({ error: "Kontakt ist blockiert" }, { status: 403 });
   }
 
   const targetUser = await prisma.user.findUnique({

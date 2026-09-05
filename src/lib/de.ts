@@ -47,7 +47,7 @@ export const de = {
     unauthorized: "Keine Berechtigung",
     nameEmailRequired: "Name und E-Mail sind erforderlich",
     emailExists: "Diese E-Mail-Adresse wird bereits verwendet",
-    passwordTooShort: "Passwort muss mindestens 6 Zeichen lang sein",
+    passwordTooShort: "Passwort muss mindestens 12 Zeichen lang sein",
     userNotFound: "Benutzer nicht gefunden",
     cannotDeactivateSelf: "Sie können Ihr eigenes Konto nicht deaktivieren",
     cannotDemoteSelf: "Sie können Ihre eigene Administrator-Rolle nicht entfernen",

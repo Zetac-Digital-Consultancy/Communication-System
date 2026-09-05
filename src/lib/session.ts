@@ -6,6 +6,7 @@ export interface SessionData {
   name: string;
   role: "ADMIN" | "USER";
   isLoggedIn: boolean;
+  sessionVersion?: number;
 }
 
 export const defaultSession: SessionData = {
@@ -33,7 +34,7 @@ function shouldUseSecureCookies(): boolean {
   const appUrl = process.env.APP_URL ?? process.env.NEXT_PUBLIC_APP_URL;
   if (appUrl) return appUrl.startsWith("https://");
 
-  return false;
+  return process.env.NODE_ENV === "production";
 }
 
 export const sessionOptions: SessionOptions = {

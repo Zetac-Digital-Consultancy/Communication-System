@@ -13,6 +13,7 @@ import { de } from "@/lib/de";
 import { getInitials } from "@/lib/utils";
 import { MessageList } from "./MessageBubble";
 import type { ConversationDetail } from "@/types";
+import SafetyActions from "./SafetyActions";
 
 interface ChatAreaProps {
   conversation: ConversationDetail | null;
@@ -37,6 +38,7 @@ export default function ChatArea({
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
   if (!conversation) {
@@ -71,9 +73,12 @@ export default function ChatArea({
     if (!text.trim() || sending) return;
 
     setSending(true);
+    setSendError(null);
     try {
       await onSendMessage(text.trim(), "TEXT");
       setText("");
+    } catch (error) {
+      setSendError(error instanceof Error ? error.message : de.errors.generic);
     } finally {
       setSending(false);
     }
@@ -90,8 +95,7 @@ export default function ChatArea({
 
     if (!uploadRes.ok) {
       const data = await uploadRes.json();
-      alert(data.error || de.errors.uploadFailed);
-      return;
+      throw new Error(data.error || de.errors.uploadFailed);
     }
 
     const { fileUrl, fileName } = await uploadRes.json();
@@ -105,8 +109,8 @@ export default function ChatArea({
       for (const file of files) {
         await handleFileUpload(file, type);
       }
-    } catch {
-      alert(de.errors.uploadFailed);
+    } catch (error) {
+      setSendError(error instanceof Error ? error.message : de.errors.uploadFailed);
     } finally {
       setUploading(false);
     }
@@ -129,6 +133,7 @@ export default function ChatArea({
       <header className="bg-white border-b border-slate-200 px-3 md:px-6 py-3 md:py-4 flex items-center gap-2 md:gap-3 shrink-0">
         <button
           onClick={onBack}
+          aria-label="Zurück zu Kontakten"
           className="md:hidden p-2 -ml-1 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition"
         >
           <ArrowLeft className="w-5 h-5" />
@@ -140,11 +145,8 @@ export default function ChatArea({
           <h2 className="font-semibold text-slate-900 truncate">
             {conversation.otherUser.name}
           </h2>
-          <p className="text-xs text-green-600 flex items-center gap-1">
-            <span className="w-1.5 h-1.5 bg-green-500 rounded-full" />
-            {de.sidebar.online}
-          </p>
         </div>
+        <SafetyActions userId={conversation.otherUser.id} />
         {conversation.otherUser.userType === "KUNDE" && (
           <button
             onClick={() =>
@@ -164,6 +166,7 @@ export default function ChatArea({
       <MessageList messages={conversation.messages} />
 
       <footer className="bg-white border-t border-slate-200 p-3 md:p-4 shrink-0">
+        {sendError && <p role="alert" className="text-sm text-red-600 mb-2">{sendError}</p>}
         {uploading && (
           <div className="flex items-center gap-2 text-sm text-slate-500 mb-2">
             <Loader2 className="w-4 h-4 animate-spin" />
@@ -209,9 +212,11 @@ export default function ChatArea({
           <div className="flex-1">
             <textarea
               value={text}
+              aria-label={de.chat.typeMessage}
+              maxLength={10000}
               onChange={(e) => setText(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
+                if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
                   e.preventDefault();
                   handleSend(e);
                 }
@@ -224,6 +229,7 @@ export default function ChatArea({
 
           <button
             type="submit"
+            aria-label="Nachricht senden"
             disabled={!text.trim() || sending || uploading}
             className="p-2.5 bg-brand-600 hover:bg-brand-700 disabled:bg-brand-300 text-white rounded-xl transition focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2"
           >

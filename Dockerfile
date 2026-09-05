@@ -27,12 +27,6 @@ ENV BUILD_STANDALONE=true
 
 RUN npm run build
 
-# Bundle the seed script into self-contained JS so the runtime image
-# doesn't need tsx or the full node_modules (@prisma/client is included
-# in the standalone output, so it stays external).
-RUN npx --yes esbuild@0.25 prisma/seed.ts --bundle --platform=node \
-    --format=cjs --external:@prisma/client --outfile=prisma/seed.cjs
-
 # ---- Stage 3: runtime ----
 FROM node:22-alpine AS runner
 RUN apk add --no-cache libc6-compat openssl
@@ -44,25 +38,24 @@ ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 ENV DATABASE_URL=file:/app/data/app.db
 
-# prisma CLI for "db push" on startup
-RUN npm install -g prisma@6
-
 RUN addgroup --system --gid 1001 nodejs \
     && adduser --system --uid 1001 nextjs
 
 # Standalone server + static assets
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+# Use the exact locked Prisma CLI and its patched dependencies for migrations.
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
 
-# Prisma schema + seed for the entrypoint
+# Prisma schema and versioned migrations for the entrypoint
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 
 COPY --chown=nextjs:nodejs docker-entrypoint.sh ./docker-entrypoint.sh
 RUN chmod +x ./docker-entrypoint.sh
 
 # Writable dirs for the SQLite database and user uploads (mounted as volumes)
-RUN mkdir -p /app/data /app/public/uploads \
-    && chown -R nextjs:nodejs /app/data /app/public
+RUN mkdir -p /app/data /app/uploads \
+    && chown -R nextjs:nodejs /app/data /app/uploads
 
 USER nextjs
 

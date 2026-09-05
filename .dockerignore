@@ -8,6 +8,8 @@ node_modules
 prisma/*.db
 prisma/*.db-journal
 public/uploads
+uploads
+test-results
 Dockerfile
 docker-compose.yml
 .dockerignore

@@ -1,6 +1,7 @@
 import { getIronSession } from "iron-session";
 import { cookies } from "next/headers";
 import { SessionData, sessionOptions } from "./session";
+import { prisma } from "./prisma";
 
 export async function getSession() {
   const cookieStore = await cookies();
@@ -12,6 +13,12 @@ export async function requireAuth() {
   if (!session.isLoggedIn || !session.userId) {
     return null;
   }
+  // Cookie claims are a snapshot. Recheck revocation and privileges on every request.
+  const user = await prisma.user.findUnique({ where: { id: session.userId } });
+  if (!user?.isActive || session.sessionVersion !== user.sessionVersion) return null;
+  session.role = user.role;
+  session.name = user.name;
+  session.email = user.email;
   return session;
 }
 

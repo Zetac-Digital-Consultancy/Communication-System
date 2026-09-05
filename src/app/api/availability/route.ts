@@ -3,6 +3,7 @@ import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { de } from "@/lib/de";
 import { isUserContact } from "@/lib/contacts";
+import { validFields } from "@/lib/validation";
 
 function toSlotDto(slot: {
   id: string;
@@ -89,7 +90,10 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const body = await request.json();
+  const body = await request.json().catch(() => null);
+  if (!validFields(body, { start: 40, end: 40, type: 4, note: 200 }) || !body.start || !body.end) {
+    return NextResponse.json({ error: de.calendar.invalidTime }, { status: 400 });
+  }
   const { start, end, type, note } = body;
 
   const startDate = new Date(start);

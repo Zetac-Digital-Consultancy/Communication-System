@@ -1,6 +1,6 @@
 import { randomBytes } from "crypto";
 
-export function generatePassword(length = 10): string {
+export function generatePassword(length = 16): string {
   const chars =
     "abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   const bytes = randomBytes(length);

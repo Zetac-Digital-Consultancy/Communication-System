@@ -3,10 +3,11 @@ import { createReadStream } from "fs";
 import { stat } from "fs/promises";
 import { Readable } from "stream";
 import path from "path";
+import { requireAuth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { parseByteRange, uploadDirectory } from "@/lib/uploads";
 
-// Serves files from public/uploads that were added after the build.
-// The production server only serves public/ assets that existed at build
-// time, so runtime uploads need this handler.
+// Private media is streamed only after checking conversation membership.
 
 const MIME_TYPES: Record<string, string> = {
   ".jpg": "image/jpeg",
@@ -23,9 +24,21 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ filename: string }> }
 ) {
+  const session = await requireAuth();
+  if (!session) return NextResponse.json({ error: "Nicht autorisiert" }, { status: 401 });
   const { filename } = await params;
+  if (!/^[a-zA-Z0-9_-]+\.(jpg|jpeg|png|gif|webp|mp4|webm|mov)$/.test(filename)) {
+    return new NextResponse(null, { status: 404 });
+  }
+  const message = await prisma.message.findFirst({
+    where: { fileUrl: `/uploads/${filename}`, conversation: { OR: [
+      { participantAId: session.userId }, { participantBId: session.userId },
+    ] } },
+    select: { id: true },
+  });
+  if (!message && !filename.startsWith(`${session.userId}-`)) return new NextResponse(null, { status: 404 });
   const safeName = path.basename(filename);
-  const filePath = path.join(process.cwd(), "public", "uploads", safeName);
+  const filePath = path.join(uploadDirectory(), safeName);
 
   let fileStat;
   try {
@@ -41,17 +54,15 @@ export async function GET(
   const contentType = MIME_TYPES[ext] ?? "application/octet-stream";
 
   const range = request.headers.get("range");
-  const rangeMatch = range?.match(/bytes=(\d*)-(\d*)/);
-  if (rangeMatch) {
-    const start = rangeMatch[1] ? parseInt(rangeMatch[1], 10) : 0;
-    const end = rangeMatch[2] ? parseInt(rangeMatch[2], 10) : fileStat.size - 1;
-
-    if (start >= fileStat.size || start > end) {
+  if (range) {
+    const parsed = parseByteRange(range, fileStat.size);
+    if (!parsed) {
       return new NextResponse(null, {
         status: 416,
         headers: { "Content-Range": `bytes */${fileStat.size}` },
       });
     }
+    const { start, end } = parsed;
 
     const stream = Readable.toWeb(
       createReadStream(filePath, { start, end })
@@ -64,6 +75,8 @@ export async function GET(
         "Content-Length": String(end - start + 1),
         "Content-Range": `bytes ${start}-${end}/${fileStat.size}`,
         "Accept-Ranges": "bytes",
+        "Cache-Control": "private, no-store",
+        "X-Content-Type-Options": "nosniff",
       },
     });
   }
@@ -75,7 +88,8 @@ export async function GET(
       "Content-Type": contentType,
       "Content-Length": String(fileStat.size),
       "Accept-Ranges": "bytes",
-      "Cache-Control": "public, max-age=31536000, immutable",
+      "Cache-Control": "private, no-store",
+      "X-Content-Type-Options": "nosniff",
     },
   });
 }

@@ -103,9 +103,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Nicht autorisiert" }, { status: 401 });
   }
 
-  const { contactUserId } = await request.json();
+  const { contactUserId } = await request.json().catch(() => ({})) ?? {};
 
-  if (!contactUserId) {
+  if (typeof contactUserId !== "string" || !contactUserId || contactUserId.length > 100) {
     return NextResponse.json(
       { error: de.contacts.selectUser },
       { status: 400 }

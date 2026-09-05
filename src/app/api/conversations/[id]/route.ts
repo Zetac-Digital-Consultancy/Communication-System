@@ -3,6 +3,9 @@ import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { de } from "@/lib/de";
 import { isUserContact } from "@/lib/contacts";
+import { stat } from "node:fs/promises";
+import path from "node:path";
+import { uploadDirectory } from "@/lib/uploads";
 
 async function getOtherParticipantId(
   conversation: { participantAId: string; participantBId: string },
@@ -123,8 +126,22 @@ export async function POST(
   }
 
   const { id } = await params;
-  const body = await request.json();
+  const body = await request.json().catch(() => ({})) ?? {};
   const { content, type = "TEXT", fileUrl, fileName } = body;
+  if (!["TEXT", "IMAGE", "VIDEO"].includes(type) ||
+      (content != null && (typeof content !== "string" || content.length > 10000)) ||
+      (fileName != null && (typeof fileName !== "string" || fileName.length > 255)) ||
+      (type === "TEXT" && (fileUrl != null || typeof content !== "string" || !content.trim()))) {
+    return NextResponse.json({ error: "Ungültige Nachricht (max. 10.000 Zeichen)" }, { status: 400 });
+  }
+  if (type !== "TEXT") {
+    const extension = type === "IMAGE" ? "jpg|png|gif|webp" : "mp4|webm|mov";
+    const pattern = new RegExp(`^/uploads/${session.userId}-[a-f0-9-]{36}\\.(${extension})$`);
+    if (typeof fileUrl !== "string" || !pattern.test(fileUrl) ||
+        !await stat(path.join(uploadDirectory(), path.basename(fileUrl))).then((s) => s.isFile()).catch(() => false)) {
+      return NextResponse.json({ error: "Ungültiger Anhang" }, { status: 400 });
+    }
+  }
 
   const conversation = await prisma.conversation.findFirst({
     where: {
@@ -163,7 +180,8 @@ export async function POST(
     );
   }
 
-  const message = await prisma.message.create({
+  const message = await prisma.$transaction(async (tx) => {
+  const created = await tx.message.create({
     data: {
       conversationId: id,
       senderId: session.userId,
@@ -177,7 +195,7 @@ export async function POST(
     },
   });
 
-  await prisma.conversation.update({
+  await tx.conversation.update({
     where: { id },
     data: { updatedAt: new Date() },
   });
@@ -204,14 +222,16 @@ export async function POST(
         ? `${de.chat.image} ${de.notifications.from} ${session.name}`
         : `${de.chat.video} ${de.notifications.from} ${session.name}`;
 
-  await prisma.notification.create({
+  await tx.notification.create({
     data: {
       userId: recipientId,
       type: notificationType,
       title: notificationTitle,
       body: notificationBody,
-      messageId: message.id,
+      messageId: created.id,
     },
+  });
+  return created;
   });
 
   return NextResponse.json({

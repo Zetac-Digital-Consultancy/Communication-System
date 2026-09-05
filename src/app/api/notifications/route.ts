@@ -113,7 +113,10 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: "Nicht autorisiert" }, { status: 401 });
   }
 
-  const { conversationId } = await request.json();
+  const { conversationId } = await request.json().catch(() => ({})) ?? {};
+  if (conversationId !== undefined && (typeof conversationId !== "string" || conversationId.length > 100)) {
+    return NextResponse.json({ error: "Ungültige Anfrage" }, { status: 400 });
+  }
 
   if (conversationId) {
     const messageIds = await prisma.message.findMany({

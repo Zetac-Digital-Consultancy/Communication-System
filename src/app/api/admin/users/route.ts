@@ -4,6 +4,7 @@ import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { generatePassword } from "@/lib/password.server";
 import { de } from "@/lib/de";
+import { validFields, validEmail } from "@/lib/validation";
 
 function formatUser(user: {
   id: string;
@@ -53,7 +54,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: de.admin.unauthorized }, { status: 403 });
   }
 
-  const body = await request.json();
+  const body = await request.json().catch(() => null);
+  if (!validFields(body, { name: 100, email: 254, password: 72, role: 10, userType: 10 }, ["generatePassword"]) ||
+      !body.email || !validEmail(body.email)) {
+    return NextResponse.json({ error: "Ungültige Benutzerdaten" }, { status: 400 });
+  }
   const {
     name,
     email,
@@ -86,9 +91,9 @@ export async function POST(request: NextRequest) {
   const plainPassword =
     shouldGenerate || !password ? generatePassword() : password;
 
-  if (plainPassword.length < 6) {
+  if (plainPassword.length < 12 || Buffer.byteLength(plainPassword) > 72) {
     return NextResponse.json(
-      { error: de.admin.passwordTooShort },
+      { error: "Passwort muss mindestens 12 Zeichen und höchstens 72 UTF-8-Bytes enthalten." },
       { status: 400 }
     );
   }

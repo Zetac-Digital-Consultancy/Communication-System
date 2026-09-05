@@ -1,12 +1,12 @@
 #!/bin/sh
 set -e
 
-echo "Syncing database schema..."
-prisma db push --skip-generate --schema=./prisma/schema.prisma
+echo "Applying database migrations..."
+node node_modules/prisma/build/index.js migrate deploy --schema=./prisma/schema.prisma
 
 if [ "$SEED_DEMO_DATA" = "true" ]; then
-  echo "Seeding demo data..."
-  node prisma/seed.cjs
+  echo "Refusing to seed publicly known demo credentials in production." >&2
+  exit 1
 fi
 
 echo "Starting server..."

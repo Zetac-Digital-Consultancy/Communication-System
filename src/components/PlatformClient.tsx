@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import ChatArea from "@/components/ChatArea";
@@ -16,6 +16,12 @@ import { de } from "@/lib/de";
 
 const POLL_INTERVAL = 3000;
 
+async function fetchData(url: string) {
+  const response = await fetch(url).catch(() => new Response(null, { status: 503 }));
+  if (response.status === 401) window.location.replace("/login");
+  return response;
+}
+
 export default function PlatformClient() {
   const router = useRouter();
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -23,6 +29,8 @@ export default function PlatformClient() {
   const [availableUsers, setAvailableUsers] = useState<AvailableUser[]>([]);
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+  const activeIdRef = useRef(activeConversationId);
+  activeIdRef.current = activeConversationId;
   const [activeConversation, setActiveConversation] = useState<ConversationDetail | null>(null);
   const [conversationError, setConversationError] = useState<string | null>(null);
   const [currentUserName, setCurrentUserName] = useState("");
@@ -40,7 +48,7 @@ export default function PlatformClient() {
   } | null>(null);
 
   const fetchNotifications = useCallback(async () => {
-    const res = await fetch("/api/notifications");
+    const res = await fetchData("/api/notifications");
     if (res.ok) {
       const data = await res.json();
       setNotifications(data.notifications);
@@ -49,7 +57,7 @@ export default function PlatformClient() {
   }, []);
 
   const fetchContacts = useCallback(async () => {
-    const res = await fetch("/api/contacts");
+    const res = await fetchData("/api/contacts");
     if (res.ok) {
       const data = await res.json();
       setContacts(data.contacts);
@@ -57,7 +65,7 @@ export default function PlatformClient() {
   }, []);
 
   const fetchAvailableUsers = useCallback(async () => {
-    const res = await fetch("/api/users");
+    const res = await fetchData("/api/users");
     if (res.ok) {
       const data = await res.json();
       setAvailableUsers(data.users);
@@ -65,22 +73,26 @@ export default function PlatformClient() {
   }, []);
 
   const fetchConversation = useCallback(async (id: string) => {
+    try {
     setConversationError(null);
-    const res = await fetch(`/api/conversations/${id}`);
+    const res = await fetchData(`/api/conversations/${id}`);
+    if (activeIdRef.current !== id) return;
     if (res.ok) {
       const data = await res.json();
+      if (activeIdRef.current !== id) return;
       setActiveConversation(data.conversation);
-      fetchNotifications();
-      fetchContacts();
     } else {
       const data = await res.json().catch(() => ({}));
       setConversationError(data.error || de.errors.generic);
       setActiveConversationId(null);
     }
-  }, [fetchNotifications, fetchContacts]);
+    } catch {
+      if (activeIdRef.current === id) setConversationError("Verbindung unterbrochen. Erneuter Versuch folgt.");
+    }
+  }, []);
 
   const fetchUser = useCallback(async () => {
-    const res = await fetch("/api/auth/me");
+    const res = await fetchData("/api/auth/me");
     if (res.ok) {
       const data = await res.json();
       setCurrentUserName(data.user.name);
@@ -204,7 +216,7 @@ export default function PlatformClient() {
     fileUrl?: string,
     fileName?: string
   ) {
-    if (!activeConversationId) return;
+    if (!activeConversationId) throw new Error(de.errors.generic);
 
     const res = await fetch(`/api/conversations/${activeConversationId}`, {
       method: "POST",
@@ -215,11 +227,14 @@ export default function PlatformClient() {
     if (res.ok) {
       const data = await res.json();
       setActiveConversation((prev) =>
-        prev
+        prev && prev.id === activeConversationId && !prev.messages.some((m) => m.id === data.message.id)
           ? { ...prev, messages: [...prev.messages, data.message] }
           : prev
       );
       fetchContacts();
+    } else {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error || de.errors.generic);
     }
   }
 
@@ -263,6 +278,8 @@ export default function PlatformClient() {
         />
       ) : (
         <ChatArea
+          key={activeConversationId ?? "empty"}
+          error={conversationError}
           conversation={activeConversation}
           onSendMessage={handleSendMessage}
           onBack={() => setActiveConversationId(null)}

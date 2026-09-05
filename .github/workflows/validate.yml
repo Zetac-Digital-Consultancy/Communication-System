@@ -1,0 +1,32 @@
+name: Validate release
+on: [push, pull_request]
+
+permissions:
+  contents: read
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: file:./ci.db
+      SESSION_SECRET: ci-build-only-secret-never-used-for-real-users
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm audit --audit-level=moderate
+  ios-compile:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: xcodebuild -version
+      - name: Compile without signing
+        run: xcodebuild -project ios/Communication.xcodeproj -scheme Communication -configuration Release -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO build

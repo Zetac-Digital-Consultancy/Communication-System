@@ -9,6 +9,10 @@ const compat = new FlatCompat({
   baseDirectory: __dirname,
 });
 
-const eslintConfig = [...compat.extends("next/core-web-vitals")];
+const eslintConfig = [...compat.extends("next/core-web-vitals"), {
+  // Private media needs the browser's session cookie; the image optimizer does not forward it.
+  files: ["src/components/MessageBubble.tsx", "src/components/Lightbox.tsx"],
+  rules: { "@next/next/no-img-element": "off" },
+}];
 
 export default eslintConfig;

@@ -93,6 +93,7 @@ export default function LoginPage() {
                   <input
                     id="email"
                     type="email"
+                    autoComplete="username"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder={de.login.emailPlaceholder}
@@ -114,6 +115,7 @@ export default function LoginPage() {
                   <input
                     id="password"
                     type="password"
+                    autoComplete="current-password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder={de.login.passwordPlaceholder}
@@ -140,9 +142,9 @@ export default function LoginPage() {
 
             <div className="mt-6 p-4 bg-slate-50 rounded-lg border border-slate-100">
               <p className="text-xs text-slate-500 text-center">
-                {de.login.demoHint}
-                <br />
-                {de.login.demoPassword}
+                Zugangsdaten erhalten Sie von Zetac IT Solutions.
+                <br /><a href="mailto:info@zetac.de" className="underline">info@zetac.de</a>
+                <br /><a href="/support" className="underline">Hilfe & Datenschutz</a>
               </p>
             </div>
           </div>

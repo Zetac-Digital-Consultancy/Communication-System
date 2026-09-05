@@ -4,11 +4,12 @@
   "private": true,
   "scripts": {
     "dev": "prisma generate && next dev",
-    "prebuild": "rm -rf .next",
     "build": "prisma generate && next build",
     "start": "next start",
-    "clean": "rm -rf .next",
-    "lint": "next lint",
+    "clean": "node -e \"require('node:fs').rmSync('.next', { recursive: true, force: true })\"",
+    "lint": "eslint src",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test tests/*.test.ts",
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
     "postinstall": "prisma generate"
@@ -20,9 +21,13 @@
     "iron-session": "^8.0.4",
     "lucide-react": "^0.511.0",
     "nanoid": "^5.1.11",
-    "next": "^15.3.3",
+    "next": "^15.5.25",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
+  },
+  "overrides": {
+    "postcss": "^8.5.28",
+    "deepmerge-ts": "^8.0.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",

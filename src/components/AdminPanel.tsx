@@ -5,6 +5,7 @@ import { Shield, UserPlus, Loader2, ArrowLeft } from "lucide-react";
 import { de } from "@/lib/de";
 import { cn, getInitials } from "@/lib/utils";
 import type { ManagedUser, UserCredentials } from "@/types";
+import ModerationQueue from "./ModerationQueue";
 
 interface AdminPanelProps {
   onBack: () => void;
@@ -203,6 +204,7 @@ export default function AdminPanel({ onBack, onOpenCalendar }: AdminPanelProps) 
       </header>
 
       <div className="flex-1 overflow-y-auto p-4 md:p-6">
+        <ModerationQueue />
         {credentials && (
           <div className="mb-4 p-4 bg-white border border-brand-200 rounded-xl shadow-sm">
             <p className="text-sm font-medium text-slate-900 mb-1">

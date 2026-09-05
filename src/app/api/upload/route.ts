@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 import { requireAuth } from "@/lib/auth";
+import { randomUUID } from "node:crypto";
+import { detectMedia, uploadDirectory } from "@/lib/uploads";
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024;
 
@@ -24,10 +26,26 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const formData = await request.formData();
-    const file = formData.get("file") as File | null;
+    // Bound the actual stream, including chunked requests with no Content-Length.
+    const maxBody = MAX_FILE_SIZE + 1024 * 1024;
+    if (Number(request.headers.get("content-length")) > maxBody) return new NextResponse(null, { status: 413 });
+    const reader = request.body?.getReader();
+    if (!reader) return new NextResponse(null, { status: 400 });
+    const chunks: Uint8Array<ArrayBuffer>[] = [];
+    let size = 0;
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > maxBody) { await reader.cancel(); return new NextResponse(null, { status: 413 }); }
+      chunks.push(new Uint8Array(value));
+    }
+    const formData = await new Response(new Blob(chunks), {
+      headers: { "Content-Type": request.headers.get("content-type") || "" },
+    }).formData();
+    const file = formData.get("file");
 
-    if (!file) {
+    if (!(file instanceof File)) {
       return NextResponse.json(
         { error: "Keine Datei hochgeladen" },
         { status: 400 }
@@ -53,13 +71,16 @@ export async function POST(request: NextRequest) {
 
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
+    const detected = detectMedia(buffer);
+    if (!detected || detected.type !== (isImage ? "IMAGE" : "VIDEO")) {
+      return NextResponse.json({ error: "Ungültiger Dateiinhalt" }, { status: 400 });
+    }
 
-    const ext = path.extname(file.name) || (isImage ? ".jpg" : ".mp4");
-    const fileName = `${Date.now()}-${session.userId.slice(0, 8)}${ext}`;
-    const uploadDir = path.join(process.cwd(), "public", "uploads");
+    const fileName = `${session.userId}-${randomUUID()}${detected.extension}`;
+    const uploadDir = uploadDirectory();
 
     await mkdir(uploadDir, { recursive: true });
-    await writeFile(path.join(uploadDir, fileName), buffer);
+    await writeFile(path.join(uploadDir, fileName), buffer, { flag: "wx" });
 
     return NextResponse.json({
       fileUrl: `/uploads/${fileName}`,

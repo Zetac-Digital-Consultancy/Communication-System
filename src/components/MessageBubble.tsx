@@ -72,6 +72,8 @@ export default function MessageBubble({
             <video
               src={message.fileUrl}
               controls
+              playsInline
+              preload="metadata"
               className="max-w-full rounded-lg max-h-80"
             >
               Ihr Browser unterstützt keine Videowiedergabe.
@@ -203,6 +205,7 @@ interface MessageListProps {
 }
 
 export function MessageList({ messages }: MessageListProps) {
+  const lastMessageId = messages.at(-1)?.id;
   const bottomRef = useRef<HTMLDivElement>(null);
   const [lightbox, setLightbox] = useState<{
     images: LightboxImage[];
@@ -211,7 +214,7 @@ export function MessageList({ messages }: MessageListProps) {
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages.length, lastMessageId]);
 
   if (messages.length === 0) {
     return (
