@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { de } from "@/lib/de";
-import { isUserContact } from "@/lib/contacts";
 
 function getMessagePreview(
   type: string,

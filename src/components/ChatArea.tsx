@@ -22,6 +22,7 @@ interface ChatAreaProps {
     fileUrl?: string,
     fileName?: string
   ) => Promise<void>;
+<<<<<<< Updated upstream
   onBack: () => void;
   onOpenCalendar: (userId: string, userName: string) => void;
 }
@@ -32,6 +33,12 @@ export default function ChatArea({
   onBack,
   onOpenCalendar,
 }: ChatAreaProps) {
+=======
+  error?: string | null;
+}
+
+export default function ChatArea({ conversation, onSendMessage, error }: ChatAreaProps) {
+>>>>>>> Stashed changes
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -44,12 +51,23 @@ export default function ChatArea({
         <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mb-4">
           <Send className="w-8 h-8 text-slate-300" />
         </div>
-        <h2 className="text-lg font-semibold text-slate-700">
-          {de.chat.selectConversation}
-        </h2>
-        <p className="text-sm text-slate-400 mt-2 text-center max-w-sm px-4">
-          {de.chat.selectConversationHint}
-        </p>
+        {error ? (
+          <>
+            <h2 className="text-lg font-semibold text-red-600">{error}</h2>
+            <p className="text-sm text-slate-400 mt-2 text-center max-w-sm px-4">
+              {de.chat.selectConversationHint}
+            </p>
+          </>
+        ) : (
+          <>
+            <h2 className="text-lg font-semibold text-slate-700">
+              {de.chat.selectConversation}
+            </h2>
+            <p className="text-sm text-slate-400 mt-2 text-center max-w-sm px-4">
+              {de.chat.selectConversationHint}
+            </p>
+          </>
+        )}
       </div>
     );
   }

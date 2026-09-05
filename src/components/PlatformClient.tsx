@@ -24,6 +24,7 @@ export default function PlatformClient() {
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [activeConversation, setActiveConversation] = useState<ConversationDetail | null>(null);
+  const [conversationError, setConversationError] = useState<string | null>(null);
   const [currentUserName, setCurrentUserName] = useState("");
   const [isAdmin, setIsAdmin] = useState(false);
   const [isKunde, setIsKunde] = useState(false);
@@ -64,12 +65,17 @@ export default function PlatformClient() {
   }, []);
 
   const fetchConversation = useCallback(async (id: string) => {
+    setConversationError(null);
     const res = await fetch(`/api/conversations/${id}`);
     if (res.ok) {
       const data = await res.json();
       setActiveConversation(data.conversation);
       fetchNotifications();
       fetchContacts();
+    } else {
+      const data = await res.json().catch(() => ({}));
+      setConversationError(data.error || de.errors.generic);
+      setActiveConversationId(null);
     }
   }, [fetchNotifications, fetchContacts]);
 
@@ -259,6 +265,7 @@ export default function PlatformClient() {
         <ChatArea
           conversation={activeConversation}
           onSendMessage={handleSendMessage}
+<<<<<<< Updated upstream
           onBack={() => setActiveConversationId(null)}
           onOpenCalendar={(userId, userName) =>
             setCalendarTarget({ userId, userName })
@@ -270,6 +277,9 @@ export default function PlatformClient() {
           userId={calendarTarget.userId}
           userName={calendarTarget.userName}
           onClose={() => setCalendarTarget(null)}
+=======
+          error={conversationError}
+>>>>>>> Stashed changes
         />
       )}
     </div>

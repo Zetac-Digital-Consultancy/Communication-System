@@ -143,14 +143,35 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const contact = await prisma.contact.create({
-    data: {
-      userId: session.userId,
-      contactUserId,
-    },
-    include: {
-      contactUser: { select: { id: true, name: true, email: true } },
-    },
+  // Contacts represent an allowed direct-message relationship.  Create the
+  // inverse record as well, so the recipient can immediately see and open the
+  // conversation instead of only receiving a notification.
+  const contact = await prisma.$transaction(async (tx) => {
+    const createdContact = await tx.contact.create({
+      data: {
+        userId: session.userId,
+        contactUserId,
+      },
+      include: {
+        contactUser: { select: { id: true, name: true, email: true } },
+      },
+    });
+
+    await tx.contact.upsert({
+      where: {
+        userId_contactUserId: {
+          userId: contactUserId,
+          contactUserId: session.userId,
+        },
+      },
+      update: {},
+      create: {
+        userId: contactUserId,
+        contactUserId: session.userId,
+      },
+    });
+
+    return createdContact;
   });
 
   return NextResponse.json({
