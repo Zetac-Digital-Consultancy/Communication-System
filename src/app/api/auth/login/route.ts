@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { allowLogin } from "@/lib/login-limit";
+import { allowLogin, clearLoginAttempts } from "@/lib/login-limit";
 
 export async function POST(request: NextRequest) {
   try {
@@ -36,6 +36,8 @@ export async function POST(request: NextRequest) {
         { status: 401 }
       );
     }
+
+    await clearLoginAttempts(user.email);
 
     const session = await getSession();
     session.userId = user.id;

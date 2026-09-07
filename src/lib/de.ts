@@ -13,8 +13,6 @@ export const de = {
     submit: "Anmelden",
     loading: "Wird angemeldet...",
     error: "Ungültige E-Mail oder Passwort",
-    demoHint: "Demo: kunde@beispiel.de, partner@beispiel.de oder admin@beispiel.de",
-    demoPassword: "Passwort: demo1234 (Admin: admin1234)",
   },
   sidebar: {
     notifications: "Benachrichtigungen",

@@ -21,13 +21,15 @@ COOKIE_SECURE=false
 ```sh
 npm ci
 npx prisma migrate deploy
-npm run db:seed
 npm run dev
 ```
 
-The optional development seed creates `kunde@beispiel.de` and `partner@beispiel.de`
-with `demo1234`, and `admin@beispiel.de` with `admin1234`. Never use these accounts
-on a live deployment. Production seeding is disabled.
+To create the first administrator, set `INITIAL_ADMIN_NAME`, `INITIAL_ADMIN_EMAIL`
+and `INITIAL_ADMIN_PASSWORD` in the local environment or untracked `.env`, then run
+`npm run db:seed`. Use a unique password of at least 12 characters (maximum 72 UTF-8
+bytes). Remove those setup variables afterward. The command has no defaults, creates
+no example conversations and refuses to overwrite an existing administrator. Create
+additional accounts through the administrator panel.
 
 ## Verification
 

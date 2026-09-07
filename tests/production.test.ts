@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { spawn, execFileSync, type ChildProcess } from "node:child_process";
+import { spawn, spawnSync, execFileSync, type ChildProcess } from "node:child_process";
 import { setTimeout as delay } from "node:timers/promises";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
@@ -78,6 +78,45 @@ test("anonymous access, malformed login and cross-origin writes are rejected", a
   assert.ok(!(await (await fetch(`${base}/login`)).text()).includes("demo1234"));
 });
 
+test("the first administrator requires explicit credentials and cannot be overwritten by bootstrap", async () => {
+  const seedEnv = { ...env, DATABASE_URL: `file:${path.join(directory, "fresh.db").replaceAll("\\", "/")}`,
+    INITIAL_ADMIN_NAME: "", INITIAL_ADMIN_EMAIL: "", INITIAL_ADMIN_PASSWORD: "" };
+  const args = ["node_modules/tsx/dist/cli.mjs", "prisma/seed.ts"];
+  const missing = spawnSync(process.execPath, args, { env: seedEnv, encoding: "utf8" });
+  assert.equal(missing.status, 1);
+  const setupEnv = { ...seedEnv, INITIAL_ADMIN_NAME: "Test Owner", INITIAL_ADMIN_EMAIL: "owner@test.invalid", INITIAL_ADMIN_PASSWORD: "unique-bootstrap-test-password" };
+  const created = spawnSync(process.execPath, args, { env: setupEnv, encoding: "utf8" });
+  assert.equal(created.status, 0, created.stderr);
+  assert.ok(!created.stdout.includes(setupEnv.INITIAL_ADMIN_PASSWORD));
+  const repeat = spawnSync(process.execPath, args, { env: { ...setupEnv, INITIAL_ADMIN_PASSWORD: "different-bootstrap-password" }, encoding: "utf8" });
+  assert.equal(repeat.status, 1);
+  const fresh = new PrismaClient({ datasourceUrl: setupEnv.DATABASE_URL });
+  try {
+    const users = await fresh.user.findMany();
+    assert.equal(users.length, 1);
+    assert.equal(users[0].role, "ADMIN");
+    assert.ok(await bcrypt.compare(setupEnv.INITIAL_ADMIN_PASSWORD, users[0].password));
+    assert.equal(await fresh.message.count(), 0);
+  } finally { await fresh.$disconnect(); }
+});
+
+test("login HTML and its client scripts contain no demo credentials", async () => {
+  const html = await (await fetch(`${base}/login`)).text();
+  const scripts = [...html.matchAll(/<script[^>]+src="([^"]+)"/g)].map((match) => match[1]);
+  const content = [html, ...await Promise.all(scripts.map(async (url) => (await fetch(new URL(url, base))).text()))].join("\n");
+  for (const value of ["demo1234", "admin1234", "kunde@beispiel.de", "partner@beispiel.de", "admin@beispiel.de"]) {
+    assert.ok(!content.includes(value), `Public login asset exposes ${value}`);
+  }
+  assert.ok(html.includes("Support kontaktieren"));
+});
+
+test("public support does not expose account-deletion controls", async () => {
+  const publicHTML = await (await fetch(`${base}/support`)).text();
+  assert.ok(!publicHTML.includes("Aktuelles Passwort"));
+  const privateHTML = await (await fetch(`${base}/support`, { headers: { Cookie: bob } })).text();
+  assert.ok(privateHTML.includes("Aktuelles Passwort"));
+});
+
 test("contacts and simultaneous conversation creation produce a single usable chat", async () => {
   assert.equal((await api("/api/contacts", alice, { userId: bobId })).status, 200);
   const results = await Promise.all([api("/api/conversations", alice, { contactUserId: bobId }), api("/api/conversations", bob, { contactUserId: aliceId })]);
@@ -127,6 +166,8 @@ test("reports reach admins and blocking prevents messages and re-adding", async 
   assert.equal((await api("/api/safety", bob, { userId: aliceId, action: "block" })).status, 200);
   assert.equal((await api(`/api/conversations/${conversationId}`, alice, { content: "blocked" })).status, 403);
   assert.equal((await api("/api/contacts", alice, { userId: bobId })).status, 403);
+  assert.ok(!(await (await api("/api/users", alice)).json()).users.some((user: { id: string }) => user.id === bobId));
+  assert.ok(!(await (await api("/api/users", bob)).json()).users.some((user: { id: string }) => user.id === aliceId));
   assert.equal((await api("/api/safety", bob, { userId: aliceId, action: "unblock" })).status, 200);
 });
 
@@ -157,6 +198,10 @@ test("persistent login throttling rejects repeated attempts", async () => {
   let res: Response | undefined;
   for (let i = 0; i < 11; i++) res = await api("/api/auth/login", "", { email: "missing@test.invalid", password });
   assert.equal(res?.status, 429); assert.equal(res?.headers.get("retry-after"), "900");
+});
+
+test("successful logins do not accumulate a lockout", async () => {
+  for (let i = 0; i < 12; i++) await login("bob@test.invalid");
 });
 
 test("self-service account deletion requires the password and revokes the session", async () => {

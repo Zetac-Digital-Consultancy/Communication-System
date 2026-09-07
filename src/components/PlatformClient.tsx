@@ -33,6 +33,9 @@ export default function PlatformClient() {
   activeIdRef.current = activeConversationId;
   const [activeConversation, setActiveConversation] = useState<ConversationDetail | null>(null);
   const [conversationError, setConversationError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const fetchingConversations = useRef(new Set<string>());
+  const chatSelection = useRef(0);
   const [currentUserName, setCurrentUserName] = useState("");
   const [isAdmin, setIsAdmin] = useState(false);
   const [isKunde, setIsKunde] = useState(false);
@@ -73,21 +76,28 @@ export default function PlatformClient() {
   }, []);
 
   const fetchConversation = useCallback(async (id: string) => {
+    if (fetchingConversations.current.has(id)) return;
+    fetchingConversations.current.add(id);
     try {
-    setConversationError(null);
-    const res = await fetchData(`/api/conversations/${id}`);
-    if (activeIdRef.current !== id) return;
-    if (res.ok) {
-      const data = await res.json();
+      const res = await fetchData(`/api/conversations/${id}`);
       if (activeIdRef.current !== id) return;
-      setActiveConversation(data.conversation);
-    } else {
-      const data = await res.json().catch(() => ({}));
-      setConversationError(data.error || de.errors.generic);
-      setActiveConversationId(null);
-    }
+      if (res.ok) {
+        const data = await res.json();
+        if (activeIdRef.current !== id) return;
+        setActiveConversation(data.conversation);
+        setConversationError(null);
+      } else if (res.status === 403 || res.status === 404) {
+        const data = await res.json().catch(() => ({}));
+        if (activeIdRef.current !== id) return;
+        setConversationError(data.error || de.errors.generic);
+        setActiveConversationId(null);
+      } else {
+        setConversationError("Verbindung unterbrochen. Ihr Entwurf bleibt erhalten. Erneuter Versuch folgt.");
+      }
     } catch {
-      if (activeIdRef.current === id) setConversationError("Verbindung unterbrochen. Erneuter Versuch folgt.");
+      if (activeIdRef.current === id) setConversationError("Verbindung unterbrochen. Ihr Entwurf bleibt erhalten. Erneuter Versuch folgt.");
+    } finally {
+      fetchingConversations.current.delete(id);
     }
   }, []);
 
@@ -117,15 +127,34 @@ export default function PlatformClient() {
   }, [activeConversationId, fetchConversation]);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      fetchNotifications();
-      fetchContacts();
-      if (activeConversationId) {
-        fetchConversation(activeConversationId);
+    let cancelled = false;
+    let polling = false;
+    let timer: ReturnType<typeof setTimeout>;
+    async function poll() {
+      if (cancelled || polling) return;
+      polling = true;
+      try {
+        if (!document.hidden) {
+          await Promise.allSettled([
+            fetchNotifications(), fetchContacts(),
+            ...(activeConversationId ? [fetchConversation(activeConversationId)] : []),
+          ]);
+        }
+      } finally {
+        polling = false;
+        if (!cancelled) timer = setTimeout(poll, POLL_INTERVAL);
       }
-    }, POLL_INTERVAL);
-
-    return () => clearInterval(interval);
+    }
+    function onVisible() {
+      if (!document.hidden) { clearTimeout(timer); void poll(); }
+    }
+    timer = setTimeout(poll, POLL_INTERVAL);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, [
     activeConversationId,
     fetchNotifications,
@@ -134,20 +163,30 @@ export default function PlatformClient() {
   ]);
 
   async function openChatWithContact(contactUserId: string) {
-    const res = await fetch("/api/conversations", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ contactUserId }),
-    });
+    const selection = ++chatSelection.current;
+    setActionError(null);
+    try {
+      const res = await fetch("/api/conversations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contactUserId }),
+      });
 
-    if (res.ok) {
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
+      if (selection !== chatSelection.current) return;
+      if (!res.ok) throw new Error(data.error || de.errors.generic);
+      if (activeIdRef.current !== data.conversation.id) setActiveConversation(null);
       setActiveConversationId(data.conversation.id);
-      fetchContacts();
+      void fetchContacts();
+    } catch (error) {
+      if (selection === chatSelection.current) setActionError(error instanceof Error ? error.message : de.errors.generic);
     }
   }
 
   function handleSelectNotification(conversationId: string) {
+    chatSelection.current++;
+    setActionError(null);
+    if (activeConversationId !== conversationId) setActiveConversation(null);
     setShowAdminPanel(false);
     setActiveConversationId(conversationId);
   }
@@ -158,6 +197,7 @@ export default function PlatformClient() {
   }
 
   function handleOpenAdminPanel() {
+    chatSelection.current++;
     setShowAdminPanel(true);
     setActiveConversationId(null);
     setActiveConversation(null);
@@ -205,9 +245,14 @@ export default function PlatformClient() {
   }
 
   async function handleLogout() {
-    await fetch("/api/auth/logout", { method: "POST" });
-    router.push("/login");
-    router.refresh();
+    try {
+      const response = await fetch("/api/auth/logout", { method: "POST" });
+      if (!response.ok) throw new Error();
+      router.replace("/login");
+      router.refresh();
+    } catch {
+      setActionError("Abmelden fehlgeschlagen. Bitte prüfen Sie Ihre Verbindung und versuchen Sie es erneut.");
+    }
   }
 
   async function handleSendMessage(
@@ -241,7 +286,9 @@ export default function PlatformClient() {
   const showChatPane = showAdminPanel || activeConversationId !== null;
 
   return (
-    <div className="h-dvh flex overflow-hidden">
+    <div className="h-dvh flex flex-col overflow-hidden">
+      {(actionError || conversationError) && <p role="alert" className="shrink-0 bg-red-50 text-red-700 px-4 py-2 text-sm">{actionError || conversationError}</p>}
+      <div className="flex flex-1 min-h-0 overflow-hidden">
       <Sidebar
         notifications={notifications}
         contacts={contacts}
@@ -281,6 +328,7 @@ export default function PlatformClient() {
           key={activeConversationId ?? "empty"}
           error={conversationError}
           conversation={activeConversation}
+          loading={activeConversationId !== null && activeConversation === null}
           onSendMessage={handleSendMessage}
           onBack={() => setActiveConversationId(null)}
           onOpenCalendar={(userId, userName) =>
@@ -295,6 +343,7 @@ export default function PlatformClient() {
           onClose={() => setCalendarTarget(null)}
         />
       )}
+      </div>
     </div>
   );
 }

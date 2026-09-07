@@ -30,12 +30,16 @@ export default function AdminPanel({ onBack, onOpenCalendar }: AdminPanelProps) 
   const [formIsActive, setFormIsActive] = useState(true);
 
   const fetchUsers = useCallback(async () => {
-    const res = await fetch("/api/admin/users");
-    if (res.ok) {
+    try {
+      const res = await fetch("/api/admin/users");
+      if (!res.ok) throw new Error();
       const data = await res.json();
       setUsers(data.users);
+    } catch {
+      setError("Benutzer konnten nicht geladen werden. Bitte versuchen Sie es erneut.");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, []);
 
   useEffect(() => {
@@ -150,32 +154,36 @@ export default function AdminPanel({ onBack, onOpenCalendar }: AdminPanelProps) 
 
   async function handleDeactivate(user: ManagedUser) {
     if (!confirm(`${user.name} deaktivieren?`)) return;
-
-    const res = await fetch(`/api/admin/users/${user.id}`, {
-      method: "DELETE",
-    });
-
-    if (res.ok) fetchUsers();
+    await mutateUser(`/api/admin/users/${user.id}`, { method: "DELETE" });
   }
 
   async function handleActivate(user: ManagedUser) {
-    const res = await fetch(`/api/admin/users/${user.id}`, {
+    await mutateUser(`/api/admin/users/${user.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ isActive: true }),
     });
 
-    if (res.ok) fetchUsers();
   }
 
   async function handleDelete(user: ManagedUser) {
     if (!confirm(`${user.name} endgültig löschen?`)) return;
 
-    const res = await fetch(`/api/admin/users/${user.id}?hard=true`, {
+    await mutateUser(`/api/admin/users/${user.id}?hard=true`, {
       method: "DELETE",
     });
 
-    if (res.ok) fetchUsers();
+  }
+
+  async function mutateUser(url: string, options: RequestInit) {
+    setError("");
+    try {
+      const res = await fetch(url, options);
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || de.admin.error);
+      await fetchUsers();
+    } catch (error) {
+      setError(error instanceof Error ? error.message : de.admin.error);
+    }
   }
 
   return (

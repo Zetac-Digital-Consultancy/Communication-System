@@ -17,6 +17,7 @@ import SafetyActions from "./SafetyActions";
 
 interface ChatAreaProps {
   conversation: ConversationDetail | null;
+  loading?: boolean;
   onSendMessage: (
     content: string,
     type: "TEXT" | "IMAGE" | "VIDEO",
@@ -30,6 +31,7 @@ interface ChatAreaProps {
 
 export default function ChatArea({
   conversation,
+  loading = false,
   onSendMessage,
   onBack,
   onOpenCalendar,
@@ -41,6 +43,13 @@ export default function ChatArea({
   const [sendError, setSendError] = useState<string | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
+  if (!conversation && loading) {
+    return <div className="flex-1 flex flex-col items-center justify-center gap-4" role="status">
+      <Loader2 className="w-6 h-6 animate-spin text-brand-600" />
+      <p>Unterhaltung wird geladen …</p>
+      <button onClick={onBack} className="text-sm text-brand-700 underline">Zurück zu Kontakten</button>
+    </div>;
+  }
   if (!conversation) {
     return (
       <div className="flex-1 hidden md:flex flex-col items-center justify-center bg-slate-50">

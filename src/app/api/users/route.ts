@@ -22,6 +22,8 @@ export async function GET() {
     where: {
       id: { notIn: excludeIds },
       isActive: true,
+      blocks: { none: { blockedId: session.userId } },
+      blockedBy: { none: { blockerId: session.userId } },
     },
     select: { id: true, name: true, email: true },
     orderBy: { name: "asc" },

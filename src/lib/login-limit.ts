@@ -15,3 +15,8 @@ export async function allowLogin(email: string): Promise<boolean> {
     return attempt.count <= 10;
   });
 }
+
+export async function clearLoginAttempts(email: string): Promise<void> {
+  const key = createHash("sha256").update(email).digest("hex");
+  await prisma.loginAttempt.deleteMany({ where: { key } });
+}

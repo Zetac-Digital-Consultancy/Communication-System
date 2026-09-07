@@ -14,6 +14,7 @@ export default function LoginPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (loading) return;
     setError("");
     setLoading(true);
 
@@ -31,7 +32,7 @@ export default function LoginPage() {
         return;
       }
 
-      router.push("/");
+      router.replace("/");
       router.refresh();
     } catch {
       setError(de.errors.generic);
@@ -61,7 +62,7 @@ export default function LoginPage() {
         </div>
       </div>
 
-      <div className="flex-1 flex items-center justify-center p-8 bg-slate-50">
+      <div className="flex-1 flex items-center justify-center p-4 sm:p-8 bg-slate-50">
         <div className="w-full max-w-md">
           <div className="lg:hidden flex items-center gap-3 mb-8 justify-center">
             <div className="w-10 h-10 bg-brand-600 rounded-xl flex items-center justify-center">
@@ -72,7 +73,7 @@ export default function LoginPage() {
             </span>
           </div>
 
-          <div className="bg-white rounded-2xl shadow-xl shadow-slate-200/50 p-8 border border-slate-100">
+          <div className="bg-white rounded-2xl shadow-xl shadow-slate-200/50 p-6 sm:p-8 border border-slate-100">
             <div className="mb-8">
               <h2 className="text-2xl font-bold text-slate-900">
                 {de.login.title}
@@ -94,6 +95,11 @@ export default function LoginPage() {
                     id="email"
                     type="email"
                     autoComplete="username"
+                    name="email"
+                    autoCapitalize="none"
+                    spellCheck={false}
+                    maxLength={254}
+                    disabled={loading}
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder={de.login.emailPlaceholder}
@@ -116,6 +122,8 @@ export default function LoginPage() {
                     id="password"
                     type="password"
                     autoComplete="current-password"
+                    name="password"
+                    disabled={loading}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder={de.login.passwordPlaceholder}
@@ -126,7 +134,7 @@ export default function LoginPage() {
               </div>
 
               {error && (
-                <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-lg border border-red-100">
+                <div role="alert" className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-lg border border-red-100">
                   {error}
                 </div>
               )}
@@ -140,14 +148,14 @@ export default function LoginPage() {
               </button>
             </form>
 
-            <div className="mt-6 p-4 bg-slate-50 rounded-lg border border-slate-100">
-              <p className="text-xs text-slate-500 text-center">
-                Zugangsdaten erhalten Sie von Zetac IT Solutions.
-                <br /><a href="mailto:info@zetac.de" className="underline">info@zetac.de</a>
-                <br /><a href="/support" className="underline">Hilfe & Datenschutz</a>
-              </p>
-            </div>
+            <p className="mt-6 text-sm text-slate-500 text-center">
+              Probleme bei der Anmeldung? <a href="mailto:info@zetac.de" className="text-brand-700 underline">Support kontaktieren</a>
+            </p>
           </div>
+          <footer className="mt-6 text-center text-xs text-slate-500 space-y-2">
+            <p>Zetac IT Solutions</p>
+            <a href="/support" className="inline-block underline">Hilfe & Datenschutz</a>
+          </footer>
         </div>
       </div>
     </div>

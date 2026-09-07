@@ -10,6 +10,18 @@ physical iPhone testing remain required. Passing web tests do not certify the li
 - Set `APP_URL=https://communication-system.zetac.de` and `COOKIE_SECURE=true`.
 - Set `PRIVACY_POLICY_URL` once published; this exposes the policy link in Help & Privacy.
 - Leave `SEED_DEMO_DATA=false`. Disable/delete any existing live demo users.
+- For a new database, run the one-time administrator setup described in README.md.
+  The seed command no longer creates demo accounts or messages. It requires your own
+  explicit credentials and will not overwrite an existing administrator.
+  After migrations, with the three `INITIAL_ADMIN_*` values supplied in your environment
+  file, the Docker equivalent is:
+
+  ```sh
+  docker compose run --rm --no-deps --entrypoint node app node_modules/tsx/dist/cli.mjs prisma/seed.ts
+  ```
+
+  Remove the setup variables afterward and recreate the app container to remove them
+  from its environment. Never put the password in a command-line argument.
 - Compose uses SQLite `/app/data/app.db` and private media `/app/uploads`.
 - The external Docker network `proxy` needs a configured HTTPS reverse proxy and valid
   TLS certificate. The app has no public host port.
