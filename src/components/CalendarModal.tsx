@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   X,
   ChevronLeft,
@@ -62,6 +62,7 @@ export default function CalendarModal({
   const [slots, setSlots] = useState<AvailabilitySlot[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const formRef = useRef<HTMLElement>(null);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
   const [formFrom, setFormFrom] = useState("09:00");
@@ -90,6 +91,10 @@ export default function CalendarModal({
     setLoading(true);
     fetchSlots();
   }, [fetchSlots]);
+
+  useEffect(() => {
+    if (showForm) formRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [showForm]);
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -212,7 +217,7 @@ export default function CalendarModal({
       onClick={onClose}
     >
       <div
-        className="bg-white sm:rounded-2xl shadow-xl w-full sm:max-w-lg h-full sm:h-auto sm:max-h-[92vh] flex flex-col"
+        className="bg-white sm:rounded-2xl shadow-xl w-full min-w-0 sm:max-w-lg h-full max-h-dvh sm:h-auto sm:max-h-[92dvh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         <header className="px-4 sm:px-6 py-4 border-b border-slate-200 flex items-center gap-3 shrink-0">
@@ -236,7 +241,7 @@ export default function CalendarModal({
           </button>
         </header>
 
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 min-h-0 overflow-y-auto">
           <div className="px-4 sm:px-6 pt-3 pb-1 flex items-center justify-between gap-2">
             <button
               onClick={() => selectMonth(-1)}
@@ -336,7 +341,7 @@ export default function CalendarModal({
           </div>
 
           <div className="border-t border-slate-100 px-4 sm:px-6 py-3">
-            <div className="flex items-center justify-between gap-2 mb-2">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
               <span className="text-sm font-medium text-slate-900">
                 {selectedDay.toLocaleDateString("de-DE", {
                   weekday: "long",
@@ -408,44 +413,45 @@ export default function CalendarModal({
               </ul>
             )}
           </div>
-        </div>
-
         {isOwn && showForm && (
-          <footer className="border-t border-slate-200 p-4 sm:px-6 shrink-0">
+          <footer ref={formRef} className="border-t border-slate-200 p-4 sm:px-6 shrink-0">
             <div className="space-y-3">
-              <div className="grid grid-cols-3 gap-2">
-                <div>
-                  <label className="block text-xs font-medium text-slate-600 mb-1">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="min-w-0">
+                  <label htmlFor="calendar-from" className="block text-xs font-medium text-slate-600 mb-1">
                     {de.calendar.from}
                   </label>
                   <input
+                    id="calendar-from"
                     type="time"
                     value={formFrom}
                     onChange={(e) => setFormFrom(e.target.value)}
-                    className="w-full px-2 py-2 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                    className="block w-full min-w-0 max-w-full min-h-11 appearance-none px-3 py-2 border border-slate-200 rounded-lg bg-white text-base sm:text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500"
                   />
                 </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-600 mb-1">
+                <div className="min-w-0">
+                  <label htmlFor="calendar-to" className="block text-xs font-medium text-slate-600 mb-1">
                     {de.calendar.to}
                   </label>
                   <input
+                    id="calendar-to"
                     type="time"
                     value={formTo}
                     onChange={(e) => setFormTo(e.target.value)}
-                    className="w-full px-2 py-2 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                    className="block w-full min-w-0 max-w-full min-h-11 appearance-none px-3 py-2 border border-slate-200 rounded-lg bg-white text-base sm:text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500"
                   />
                 </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-600 mb-1">
+                <div className="min-w-0">
+                  <label htmlFor="calendar-type" className="block text-xs font-medium text-slate-600 mb-1">
                     {de.calendar.title}
                   </label>
                   <select
+                    id="calendar-type"
                     value={formType}
                     onChange={(e) =>
                       setFormType(e.target.value as "FREE" | "BUSY")
                     }
-                    className="w-full px-2 py-2 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                    className="block w-full min-w-0 max-w-full min-h-11 px-3 py-2 border border-slate-200 rounded-lg bg-white text-base sm:text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500"
                   >
                     <option value="FREE">{de.calendar.free}</option>
                     <option value="BUSY">{de.calendar.busy}</option>
@@ -458,7 +464,7 @@ export default function CalendarModal({
                 onChange={(e) => setFormNote(e.target.value)}
                 placeholder={de.calendar.notePlaceholder}
                 maxLength={200}
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                className="block w-full min-w-0 px-3 py-2 border border-slate-200 rounded-lg text-base sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500"
               />
               {formError && <p className="text-xs text-red-600">{formError}</p>}
               <div className="flex gap-2">
@@ -479,6 +485,7 @@ export default function CalendarModal({
             </div>
           </footer>
         )}
+        </div>
       </div>
     </div>
   );
