@@ -171,6 +171,24 @@ test("reports reach admins and blocking prevents messages and re-adding", async 
   assert.equal((await api("/api/safety", bob, { userId: aliceId, action: "unblock" })).status, 200);
 });
 
+test("admin action buttons' DELETE endpoints deactivate and delete, preserving self-protection", async () => {
+  const user = await db.user.create({ data: { name: "Action test", email: "actions@test.invalid", password: await bcrypt.hash(password, 4) } });
+  const cookie = await login("actions@test.invalid");
+  const route = `/api/admin/users/${user.id}`;
+  assert.equal((await api(route, outsider, undefined, "DELETE")).status, 403);
+  assert.equal((await api(`/api/admin/users/${adminId}`, admin, undefined, "DELETE")).status, 400);
+  assert.equal((await api(`/api/admin/users/${adminId}?hard=true`, admin, undefined, "DELETE")).status, 400);
+  const deactivated = await api(route, admin, undefined, "DELETE");
+  assert.equal(deactivated.status, 200);
+  assert.equal((await deactivated.json()).user.isActive, false);
+  assert.equal((await db.user.findUniqueOrThrow({ where: { id: user.id } })).isActive, false);
+  assert.equal((await api("/api/contacts", cookie)).status, 401);
+  const deleted = await api(`${route}?hard=true`, admin, undefined, "DELETE");
+  assert.equal(deleted.status, 200);
+  assert.equal((await deleted.json()).deleted, true);
+  assert.equal(await db.user.findUnique({ where: { id: user.id } }), null);
+});
+
 test("deactivation, reactivation, password reset and demotion invalidate old authority", async () => {
   const generated = await api("/api/admin/users", admin, { name: "Generated", email: "generated@test.invalid", generatePassword: true });
   assert.equal(generated.status, 200);

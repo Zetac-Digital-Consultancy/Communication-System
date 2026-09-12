@@ -20,6 +20,9 @@ export default function AdminPanel({ onBack, onOpenCalendar }: AdminPanelProps) 
   const [credentials, setCredentials] = useState<UserCredentials | null>(null);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [confirmation, setConfirmation] = useState<{ userId: string; action: "deactivate" | "delete" } | null>(null);
+  const [busyUserId, setBusyUserId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<{ userId: string; message: string } | null>(null);
 
   const [formName, setFormName] = useState("");
   const [formEmail, setFormEmail] = useState("");
@@ -152,13 +155,13 @@ export default function AdminPanel({ onBack, onOpenCalendar }: AdminPanelProps) 
     }
   }
 
-  async function handleDeactivate(user: ManagedUser) {
-    if (!confirm(`${user.name} deaktivieren?`)) return;
-    await mutateUser(`/api/admin/users/${user.id}`, { method: "DELETE" });
+  function requestConfirmation(user: ManagedUser, action: "deactivate" | "delete") {
+    setActionError(null);
+    setConfirmation({ userId: user.id, action });
   }
 
   async function handleActivate(user: ManagedUser) {
-    await mutateUser(`/api/admin/users/${user.id}`, {
+    await mutateUser(user.id, `/api/admin/users/${user.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ isActive: true }),
@@ -166,23 +169,31 @@ export default function AdminPanel({ onBack, onOpenCalendar }: AdminPanelProps) 
 
   }
 
-  async function handleDelete(user: ManagedUser) {
-    if (!confirm(`${user.name} endgültig löschen?`)) return;
-
-    await mutateUser(`/api/admin/users/${user.id}?hard=true`, {
-      method: "DELETE",
-    });
-
+  async function confirmAction() {
+    if (!confirmation || busyUserId) return;
+    const { userId, action } = confirmation;
+    await mutateUser(userId, `/api/admin/users/${userId}${action === "delete" ? "?hard=true" : ""}`, { method: "DELETE" });
   }
 
-  async function mutateUser(url: string, options: RequestInit) {
-    setError("");
+  async function mutateUser(userId: string, url: string, options: RequestInit) {
+    if (busyUserId) return;
+    setBusyUserId(userId);
+    setActionError(null);
     try {
       const res = await fetch(url, options);
-      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || de.admin.error);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || de.admin.error);
+      // Update immediately; a failed follow-up refresh must not hide a successful action.
+      setUsers((previous) => data.deleted
+        ? previous.filter((user) => user.id !== userId)
+        : previous.map((user) => user.id === userId ? { ...user, ...data.user } : user));
+      if (editingUser?.id === userId) setEditingUser(null);
+      setConfirmation(null);
       await fetchUsers();
     } catch (error) {
-      setError(error instanceof Error ? error.message : de.admin.error);
+      setActionError({ userId, message: error instanceof Error ? error.message : de.admin.error });
+    } finally {
+      setBusyUserId(null);
     }
   }
 
@@ -213,6 +224,7 @@ export default function AdminPanel({ onBack, onOpenCalendar }: AdminPanelProps) 
 
       <div className="flex-1 overflow-y-auto p-4 md:p-6">
         <ModerationQueue />
+        {error && !showCreate && !editingUser && <p role="alert" className="my-3 text-sm text-red-600">{error}</p>}
         {credentials && (
           <div className="mb-4 p-4 bg-white border border-brand-200 rounded-xl shadow-sm">
             <p className="text-sm font-medium text-slate-900 mb-1">
@@ -457,13 +469,17 @@ export default function AdminPanel({ onBack, onOpenCalendar }: AdminPanelProps) 
                     )}
                     {user.isActive ? (
                       <button
-                        onClick={() => handleDeactivate(user)}
+                        type="button"
+                        disabled={busyUserId !== null}
+                        onClick={() => requestConfirmation(user, "deactivate")}
                         className="text-xs text-amber-600 hover:text-amber-700 font-medium"
                       >
                         {de.admin.deactivate}
                       </button>
                     ) : (
                       <button
+                        type="button"
+                        disabled={busyUserId !== null}
                         onClick={() => handleActivate(user)}
                         className="text-xs text-green-600 hover:text-green-700 font-medium"
                       >
@@ -471,12 +487,35 @@ export default function AdminPanel({ onBack, onOpenCalendar }: AdminPanelProps) 
                       </button>
                     )}
                     <button
-                      onClick={() => handleDelete(user)}
+                      type="button"
+                      disabled={busyUserId !== null}
+                      onClick={() => requestConfirmation(user, "delete")}
                       className="text-xs text-red-600 hover:text-red-700 font-medium"
                     >
                       {de.admin.delete}
                     </button>
                   </div>
+                  {confirmation?.userId === user.id && (
+                    <div role="group" aria-label="Aktion bestätigen" className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-3 space-y-3">
+                      <p className="text-sm text-slate-800">
+                        {confirmation.action === "delete"
+                          ? `${user.name} endgültig löschen? Das Konto und seine Gespräche werden gelöscht. Dies kann nicht rückgängig gemacht werden.`
+                          : `${user.name} deaktivieren? Der Benutzer kann sich danach nicht mehr anmelden. Bestehende Sitzungen werden gesperrt.`}
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        <button type="button" disabled={busyUserId !== null} onClick={confirmAction}
+                          className="min-h-11 rounded-lg bg-red-600 px-3 py-2 text-sm font-medium text-white disabled:opacity-50">
+                          {busyUserId === user.id ? "Wird ausgeführt …" : confirmation.action === "delete" ? "Endgültig löschen" : "Jetzt deaktivieren"}
+                        </button>
+                        <button type="button" disabled={busyUserId !== null} onClick={() => { setConfirmation(null); setActionError(null); }}
+                          className="min-h-11 rounded-lg border border-slate-300 px-3 py-2 text-sm disabled:opacity-50">
+                          {de.sidebar.cancel}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  {busyUserId === user.id && <p role="status" className="mt-2 text-xs text-slate-500">Änderung wird gespeichert …</p>}
+                  {actionError?.userId === user.id && <p role="alert" className="mt-2 text-sm text-red-600">{actionError.message}</p>}
                 </div>
               </li>
             ))}
